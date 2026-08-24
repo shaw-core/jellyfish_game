@@ -1,0 +1,141 @@
+{
+  "frames": [
+    {
+      "filename": "pressure_gate_000_open.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 64
+      },
+      "duration": 130
+    },
+    {
+      "filename": "pressure_gate_001_open.aseprite",
+      "frame": {
+        "x": 64,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 64
+      },
+      "duration": 130
+    },
+    {
+      "filename": "pressure_gate_002_open.aseprite",
+      "frame": {
+        "x": 128,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 64
+      },
+      "duration": 130
+    },
+    {
+      "filename": "pressure_gate_003_open.aseprite",
+      "frame": {
+        "x": 192,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 64
+      },
+      "duration": 130
+    },
+    {
+      "filename": "pressure_gate_004_open.aseprite",
+      "frame": {
+        "x": 256,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 64
+      },
+      "duration": 130
+    }
+  ],
+  "meta": {
+    "app": "Aseprite",
+    "version": "1.3.x-compatible",
+    "image": "pressure_gate.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 320,
+      "h": 64
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "open",
+        "from": 0,
+        "to": 4,
+        "direction": "forward"
+      }
+    ],
+    "layers": [
+      {
+        "name": "gate",
+        "opacity": 255,
+        "blendMode": "normal"
+      }
+    ],
+    "slices": []
+  }
+}

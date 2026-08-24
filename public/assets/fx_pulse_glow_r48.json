@@ -1,0 +1,207 @@
+{
+  "frames": [
+    {
+      "filename": "fx_pulse_glow_r48_000_pulse.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_001_pulse.aseprite",
+      "frame": {
+        "x": 96,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_002_pulse.aseprite",
+      "frame": {
+        "x": 192,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_003_pulse.aseprite",
+      "frame": {
+        "x": 288,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_004_pulse.aseprite",
+      "frame": {
+        "x": 384,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_005_pulse.aseprite",
+      "frame": {
+        "x": 480,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_006_pulse.aseprite",
+      "frame": {
+        "x": 576,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    },
+    {
+      "filename": "fx_pulse_glow_r48_007_pulse.aseprite",
+      "frame": {
+        "x": 672,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 96
+      },
+      "duration": 90
+    }
+  ],
+  "meta": {
+    "app": "Aseprite",
+    "version": "1.3.x-compatible",
+    "image": "fx_pulse_glow_r48.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 768,
+      "h": 96
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "pulse",
+        "from": 0,
+        "to": 7,
+        "direction": "forward"
+      }
+    ],
+    "layers": [
+      {
+        "name": "glow",
+        "opacity": 255,
+        "blendMode": "normal"
+      }
+    ],
+    "slices": []
+  }
+}

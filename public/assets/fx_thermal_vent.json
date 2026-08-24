@@ -1,0 +1,207 @@
+{
+  "frames": [
+    {
+      "filename": "fx_thermal_vent_000_thermal_vent.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_001_thermal_vent.aseprite",
+      "frame": {
+        "x": 64,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_002_thermal_vent.aseprite",
+      "frame": {
+        "x": 128,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_003_thermal_vent.aseprite",
+      "frame": {
+        "x": 192,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_004_thermal_vent.aseprite",
+      "frame": {
+        "x": 256,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_005_thermal_vent.aseprite",
+      "frame": {
+        "x": 320,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_006_thermal_vent.aseprite",
+      "frame": {
+        "x": 384,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    },
+    {
+      "filename": "fx_thermal_vent_007_thermal_vent.aseprite",
+      "frame": {
+        "x": 448,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 96
+      },
+      "duration": 110
+    }
+  ],
+  "meta": {
+    "app": "Aseprite",
+    "version": "1.3.x-compatible",
+    "image": "fx_thermal_vent.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 512,
+      "h": 96
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "thermal_vent",
+        "from": 0,
+        "to": 7,
+        "direction": "forward"
+      }
+    ],
+    "layers": [
+      {
+        "name": "warm_bubbles",
+        "opacity": 255,
+        "blendMode": "normal"
+      }
+    ],
+    "slices": []
+  }
+}
