@@ -6,6 +6,8 @@ import { Jellyfish, type JellyfishInput } from '../game/Jellyfish';
 import { Drone } from '../game/Drone';
 import { Conduit, Gate, Relay, Vent } from '../game/props';
 import { Darkness, type LightSource } from '../game/Darkness';
+import { Particles } from '../game/Particles';
+import { CameraJuice } from '../game/CameraJuice';
 import type { AssetStatus } from './BootScene';
 import { audio } from '../audio/AudioSystem';
 
@@ -30,6 +32,8 @@ export class GameScene extends Phaser.Scene {
   private coneGfx!: Phaser.GameObjects.Graphics;
   private debugGfx!: Phaser.GameObjects.Graphics;
   private pulseFx!: Phaser.GameObjects.Sprite;
+  private particles!: Particles;
+  private juice!: CameraJuice;
 
   private checkpoint = { x: 0, y: 0 };
   private won = false;
@@ -94,12 +98,13 @@ export class GameScene extends Phaser.Scene {
 
     this.pulseFx = this.add.sprite(0, 0, 'pulsefx').setDepth(25).setVisible(false);
 
+    this.particles = new Particles(this, 18);
     this.darkness = new Darkness(this, worldW, worldH);
 
     // --- 相机与输入 ---------------------------------------------
     this.cameras.main.setBounds(0, 0, worldW, worldH);
-    this.cameras.main.setZoom(2);
     this.cameras.main.startFollow(this.jelly.sprite, true, 0.09, 0.09);
+    this.juice = new CameraJuice(this.cameras.main, 2);
 
     const kb = this.input.keyboard!;
     const K = Phaser.Input.Keyboard.KeyCodes;
@@ -123,6 +128,16 @@ export class GameScene extends Phaser.Scene {
   override update(time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 1 / 30);
     if (this.won) return;
+
+    const view = this.cameras.main.worldView;
+
+    // 顿帧期间只推进表现层：粒子继续飘、相机继续收推镜，
+    // 但物理和敌人全部冻住 —— 停顿感就是这么来的
+    if (this.juice.frozen) {
+      this.juice.update(dt, this.jelly.velocity, this.tuning.maxSpeed);
+      this.particles.update(dt, view, time);
+      return;
+    }
 
     const input = this.readInput();
     const wasPulsing = this.jelly.pulsing;
@@ -156,6 +171,9 @@ export class GameScene extends Phaser.Scene {
 
     for (const r of this.relays) r.update(time);
 
+    this.updateParticles(dt, view, time);
+    this.juice.update(dt, this.jelly.velocity, this.tuning.maxSpeed);
+
     this.drawCones();
     this.drawDebug();
     this.updateDarkness();
@@ -184,6 +202,8 @@ export class GameScene extends Phaser.Scene {
     // 蓄力 -> 喷射：用上一帧的蓄力量决定音量
     if (this.jelly.state === 'thrust' && this.prevState !== 'thrust') {
       audio.thrust(this.lastCharge);
+      this.particles.thrust(this.jelly.x, this.jelly.y, this.jelly.facing, this.lastCharge);
+      this.juice.punch(this.lastCharge);
     }
     this.lastCharge = this.jelly.state === 'charge' ? this.jelly.charge : this.lastCharge;
     this.prevState = this.jelly.state;
@@ -220,6 +240,26 @@ export class GameScene extends Phaser.Scene {
 
   private lastCharge = 0;
 
+  private updateParticles(dt: number, view: Phaser.Geom.Rectangle, time: number): void {
+    // 蓄力时持续吸入微粒，蓄得越满吸得越急
+    if (this.jelly.state === 'charge' && Math.random() < 0.6 + this.jelly.charge * 0.4) {
+      this.particles.intake(this.jelly.x, this.jelly.y, this.jelly.charge);
+    }
+
+    if (this.jelly.bumpStrength > 0) {
+      this.particles.bump(this.jelly.x, this.jelly.y, this.jelly.bumpStrength);
+    }
+
+    // 电弧火花：只在放电帧、且在视野内才发，避免看不见的地方白算
+    for (const c of this.conduits) {
+      if (!c.live) continue;
+      if (c.x < view.x - 30 || c.x > view.right + 30) continue;
+      if (Math.random() < 0.25) this.particles.spark(c.x, c.y);
+    }
+
+    this.particles.update(dt, view, time);
+  }
+
   private readInput(): JellyfishInput {
     const turn =
       (this.keys.left.isDown || this.keys.a.isDown ? -1 : 0) +
@@ -250,6 +290,8 @@ export class GameScene extends Phaser.Scene {
   private firePulse(): void {
     if (this.status.jelly) this.pulseFx.play('pulse_fx');
     audio.pulse();
+    this.particles.pulse(this.jelly.x, this.jelly.y, this.tuning.pulseRadius);
+    this.juice.punch(0.35);
     let lit = 0;
     for (const r of this.relays) {
       if (r.tryActivate(this.jelly.x, this.jelly.y, this.tuning.pulseRadius)) audio.relayOn();
@@ -268,12 +310,17 @@ export class GameScene extends Phaser.Scene {
   private damage(): void {
     if (!this.jelly.hurt(this.tuning)) return;
     audio.hurt();
-    this.cameras.main.shake(160, 0.006);
+    // 顿帧比震屏更能传达"被打到了"，两个一起用
+    this.juice.hitstop(0.11);
+    this.particles.bump(this.jelly.x, this.jelly.y, 1);
+    this.cameras.main.shake(180, 0.008);
     this.events.emit('health', this.jelly.health);
     if (this.jelly.health <= 0) this.respawn();
   }
 
   private respawn(): void {
+    this.particles.clearTransient();
+    this.juice.reset();
     this.jelly.setPosition(this.checkpoint.x, this.checkpoint.y);
     this.jelly.health = 3;
     this.jelly.invuln = this.tuning.invulnTime;
@@ -390,6 +437,7 @@ export class GameScene extends Phaser.Scene {
       totalRelays: this.relays.length,
       assets: this.status,
       muted: audio.muted,
+      particles: this.particles.count,
     };
   }
 }

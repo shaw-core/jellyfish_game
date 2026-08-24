@@ -187,6 +187,7 @@ export function mountDebugPanel(scene: GameScene): void {
       `蓄力 <b>${(r.charge * 100).toFixed(0)}</b>%<br />` +
       `生命 <b>${r.health}</b><br />` +
       `继电器 <b>${r.relays}/${r.totalRelays}</b><br />` +
+      `粒子 <b>${r.particles}</b><br />` +
       `缺失资产 <b>${missing.length ? missing.join(', ') : '无'}</b>`;
   }, 100);
 }
