@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { FONT, SIZE } from './theme';
 
 export interface Line {
   /** 说话者。留空表示旁白 */
@@ -10,7 +11,8 @@ export interface Line {
   hold?: number;
 }
 
-const GLITCH = '▓▒░#§¤◊∎⌁';
+// 只用 Ark Pixel 确实收录的字形，否则乱码块自己会退化成系统字体
+const GLITCH = '▓▒░#§¤◊※';
 
 /**
  * 终端式对白框。
@@ -45,13 +47,12 @@ export class Dialogue {
     this.box = scene.add.rectangle(0, 0, w, h, 0x0b1026, 0.88).setOrigin(0, 0);
     this.box.setStrokeStyle(1, 0x25355f);
 
-    const font = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
-    this.nameText = scene.add.text(12, 9, '', { ...font, fontSize: '11px', color: '#D8792D' });
+        this.nameText = scene.add.text(12, 9, '', { ...FONT, fontSize: SIZE.small, color: '#D8792D' });
     this.bodyText = scene.add.text(12, 30, '', {
-      ...font, fontSize: '13px', color: '#DFFFF7',
+      ...FONT, fontSize: SIZE.body, color: '#DFFFF7',
       wordWrap: { width: w - 24 }, lineSpacing: 5,
     });
-    this.prompt = scene.add.text(w - 20, h - 20, '▾', { ...font, fontSize: '11px', color: '#31D6C8' })
+    this.prompt = scene.add.text(w - 20, h - 20, '▾', { ...FONT, fontSize: SIZE.small, color: '#31D6C8' })
       .setAlpha(0);
 
     this.container = scene.add.container(x, y, [this.box, this.nameText, this.bodyText, this.prompt]);

@@ -6,6 +6,11 @@ import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
 import { EndingScene } from './scenes/EndingScene';
 import { mountDebugPanel } from './ui/DebugPanel';
+import { waitForFont } from './ui/theme';
+
+// 字体先就位再启动：Phaser 建 Text 时会立刻量文字宽度，
+// 字体没加载完的话首帧会按系统字体排版，然后跳一下
+await waitForFont();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

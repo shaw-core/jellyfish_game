@@ -3,8 +3,8 @@ import { COLORS } from '../config/tuning';
 import { Particles } from '../game/Particles';
 import { audio } from '../audio/AudioSystem';
 import type { AssetStatus } from './BootScene';
+import { FONT, SIZE } from '../ui/theme';
 
-const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
 /**
  * 标题画面。
@@ -46,11 +46,11 @@ export class TitleScene extends Phaser.Scene {
     this.particles = new Particles(this, 5);
 
     const title = this.add.text(width / 2, height * 0.36, '深海余烬与流光水母', {
-      ...FONT, fontSize: '26px', color: '#70FFE0',
+      ...FONT, fontSize: SIZE.title, color: '#70FFE0',
     }).setOrigin(0.5).setAlpha(0);
 
     const sub = this.add.text(width / 2, height * 0.36 + 30, 'EMBERS OF THE ABYSS', {
-      ...FONT, fontSize: '10px', color: '#31D6C8',
+      ...FONT, fontSize: SIZE.small, color: '#31D6C8',
     }).setOrigin(0.5).setAlpha(0);
     sub.setLetterSpacing?.(4);
 
@@ -59,7 +59,7 @@ export class TitleScene extends Phaser.Scene {
     const labels = ['开始下潜', '直接进入 Zone 1', '操作说明'];
     labels.forEach((label, i) => {
       const t = this.add.text(width / 2, height * 0.58 + i * 26, label, {
-        ...FONT, fontSize: '13px', color: '#59636B',
+        ...FONT, fontSize: SIZE.body, color: '#59636B',
       }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
 
       t.on('pointerover', () => { this.index = i; this.refresh(); });
@@ -69,7 +69,7 @@ export class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: this.items, alpha: 1, duration: 900, delay: 1100 });
 
     this.add.text(width / 2, height - 24, '↑ ↓ 选择    Enter / 点击 确认', {
-      ...FONT, fontSize: '10px', color: '#25355F',
+      ...FONT, fontSize: SIZE.small, color: '#25355F',
     }).setOrigin(0.5);
 
     const kb = this.input.keyboard!;
@@ -132,21 +132,21 @@ export class HelpScene extends Phaser.Scene {
     ];
 
     this.add.text(width / 2, height * 0.22, '操作', {
-      ...FONT, fontSize: '18px', color: '#70FFE0',
+      ...FONT, fontSize: SIZE.heading, color: '#70FFE0',
     }).setOrigin(0.5);
 
     rows.forEach(([k, v], i) => {
       const y = height * 0.32 + i * 26;
       this.add.text(width / 2 - 16, y, k, {
-        ...FONT, fontSize: '12px', color: '#D8792D',
+        ...FONT, fontSize: SIZE.body, color: '#D8792D',
       }).setOrigin(1, 0.5);
       this.add.text(width / 2 + 16, y, v, {
-        ...FONT, fontSize: '12px', color: '#DFFFF7',
+        ...FONT, fontSize: SIZE.body, color: '#DFFFF7',
       }).setOrigin(0, 0.5);
     });
 
     this.add.text(width / 2, height - 40, '按任意键返回', {
-      ...FONT, fontSize: '11px', color: '#59636B',
+      ...FONT, fontSize: SIZE.small, color: '#59636B',
     }).setOrigin(0.5);
 
     this.time.delayedCall(200, () => {

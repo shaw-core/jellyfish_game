@@ -6,8 +6,9 @@ import { Dialogue } from '../ui/Dialogue';
 import { audio } from '../audio/AudioSystem';
 import type { AssetStatus } from './BootScene';
 import type { LevelData } from '../level/level1';
+import { drawGlyphWall } from '../game/Glyphs';
+import { FONT, SIZE } from '../ui/theme';
 
-const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
 type Phase = 'drift' | 'rescue' | 'freed' | 'sweep' | 'fall' | 'land' | 'wake';
 
@@ -83,7 +84,7 @@ export class PrologueScene extends Phaser.Scene {
     this.darkOverlay = this.add.rectangle(0, 0, W, H, 0x0b1026)
       .setOrigin(0, 0).setDepth(50).setAlpha(0).setScrollFactor(0);
 
-    this.hint = this.add.text(0, 0, '', { ...FONT, fontSize: '12px', color: '#59636B' })
+    this.hint = this.add.text(0, 0, '', { ...FONT, fontSize: SIZE.body, color: '#59636B' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(55);
     this.positionHint();
     this.scale.on('resize', () => this.positionHint());
@@ -332,15 +333,13 @@ export class PrologueScene extends Phaser.Scene {
     this.particles.pulse(this.jelly.x, this.jelly.y, 300);
     this.tweens.add({ targets: this.darkOverlay, alpha: 0.55, duration: 400, yoyo: true });
 
-    // 被照亮的一整面碑文
-    const glyphs = this.add.text(
-      this.jelly.x, this.jelly.y - 90,
-      '⊐ ⋔ ⌇ ∎ ⊏\n⋔ ∎ ⊐ ⌇ ⋔ ∎',
-      { ...FONT, fontSize: '22px', color: '#31D6C8', align: 'center', lineSpacing: 10 },
-    ).setOrigin(0.5).setDepth(52).setAlpha(0);
+    // 被照亮的一整面碑文。用程序画而不是拿 Unicode 符号顶替 ——
+    // 这是玩家第一次见到那个文明的文字，它不该是"别人的字"
+    const wall = this.add.graphics().setDepth(52).setAlpha(0);
+    drawGlyphWall(wall, this.jelly.x, this.jelly.y - 96, 6, 2, 16, 8, 0x31d6c8, 1);
 
-    this.tweens.add({ targets: glyphs, alpha: 0.9, duration: 900 });
-    this.tweens.add({ targets: glyphs, alpha: 0.25, duration: 2400, delay: 1200 });
+    this.tweens.add({ targets: wall, alpha: 0.95, duration: 900 });
+    this.tweens.add({ targets: wall, alpha: 0.22, duration: 2400, delay: 1200 });
 
     this.time.delayedCall(1800, () => {
       this.dialogue.play([

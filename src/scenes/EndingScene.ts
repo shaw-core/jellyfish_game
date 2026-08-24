@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
 import type { AssetStatus } from './BootScene';
 import { audio } from '../audio/AudioSystem';
+import { FONT, SIZE } from '../ui/theme';
 
-const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
 /** 结局：苏醒与归群 */
 export class EndingScene extends Phaser.Scene {
@@ -30,16 +30,16 @@ export class EndingScene extends Phaser.Scene {
     }
 
     this.add.text(width / 2, height - 108, '穿过闸门', {
-      ...FONT, fontSize: '18px', color: '#70FFE0',
+      ...FONT, fontSize: SIZE.heading, color: '#70FFE0',
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height - 78,
       '锈蚀边缘只是断裂带的入口。\n更深处，服务器农场仍在黑暗里等待通电。',
-      { ...FONT, fontSize: '11px', color: '#59636B', align: 'center', lineSpacing: 6 })
+      { ...FONT, fontSize: SIZE.small, color: '#59636B', align: 'center', lineSpacing: 6 })
       .setOrigin(0.5);
 
     this.add.text(width / 2, height - 34, 'Zone 1 完 · 按任意键回到标题', {
-      ...FONT, fontSize: '11px', color: '#D8792D',
+      ...FONT, fontSize: SIZE.small, color: '#D8792D',
     }).setOrigin(0.5);
 
     const again = () => {

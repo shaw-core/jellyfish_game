@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
+import { FONT, SIZE } from '../ui/theme';
 
-const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
 /** 覆盖在游戏之上的 HUD。独立场景，这样不受主相机 zoom 影响 */
 export class HudScene extends Phaser.Scene {
@@ -18,13 +18,13 @@ export class HudScene extends Phaser.Scene {
       this.hearts.push(this.add.circle(20 + i * 16, 22, 5, COLORS.biolum));
     }
 
-    this.objective = this.add.text(16, 38, '', { ...FONT, fontSize: '12px', color: '#59636B' });
-    this.toast = this.add.text(0, 0, '', { ...FONT, fontSize: '13px', color: '#70FFE0' })
+    this.objective = this.add.text(16, 38, '', { ...FONT, fontSize: SIZE.body, color: '#59636B' });
+    this.toast = this.add.text(0, 0, '', { ...FONT, fontSize: SIZE.body, color: '#70FFE0' })
       .setOrigin(0.5).setAlpha(0);
 
     this.add.text(16, this.scale.height - 26,
       '空格/左键 蓄力喷射   ·   Shift/右键 生物脉冲   ·   A D 转向   ·   R 重生   ·   M 静音',
-      { ...FONT, fontSize: '11px', color: '#25355F' });
+      { ...FONT, fontSize: SIZE.small, color: '#25355F' });
 
     const game = this.scene.get('game') as Phaser.Scene & { readout?: { health: number; relays: number; totalRelays: number } };
 

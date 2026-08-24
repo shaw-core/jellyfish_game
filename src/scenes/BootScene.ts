@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
+import { FONT, SIZE } from '../ui/theme';
 
 interface AsepriteJson {
   frames: { filename: string; duration: number }[];
@@ -148,7 +149,7 @@ export class BootScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const bar = this.add.rectangle(width / 2, height / 2, 1, 3, COLORS.biolum);
     const label = this.add.text(width / 2, height / 2 - 20, '下潜中', {
-      fontFamily: 'ui-monospace, monospace', fontSize: '12px', color: '#31D6C8',
+      ...FONT, fontSize: SIZE.body, color: '#31D6C8',
     }).setOrigin(0.5);
 
     this.load.on('progress', (p: number) => bar.setSize(Math.max(1, 220 * p), 3));

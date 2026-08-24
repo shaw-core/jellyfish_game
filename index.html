@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>深海余烬与流光水母 · Zone 1</title>
 <style>
+  /* Ark Pixel Font (OFL 1.1) — 已子集化，见 tools/subset_font.py */
+  @font-face {
+    font-family: 'ArkPixel';
+    src: url('./fonts/ark-pixel-12px-subset.woff2') format('woff2');
+    font-display: block;
+  }
+
   :root {
     --abyss:      #0B1026;
     --deep:       #1B2A4A;
@@ -23,7 +30,10 @@
     height: 100%;
     background: var(--abyss);
     color: var(--bone);
-    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-family: 'ArkPixel', ui-monospace, "SF Mono", Menlo, monospace;
+    /* 像素字体不能被抗锯齿吃掉笔画 */
+    -webkit-font-smoothing: none;
+    font-smooth: never;
     overscroll-behavior: none;
   }
 
@@ -50,7 +60,7 @@
 
   #panel h1 {
     margin: 0 0 2px;
-    font-size: 13px;
+    font-size: 12px;
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--biolum);
