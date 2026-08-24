@@ -38,13 +38,13 @@ export class EndingScene extends Phaser.Scene {
       { ...FONT, fontSize: '11px', color: '#59636B', align: 'center', lineSpacing: 6 })
       .setOrigin(0.5);
 
-    this.add.text(width / 2, height - 34, 'Zone 1 完 · 按任意键重玩', {
+    this.add.text(width / 2, height - 34, 'Zone 1 完 · 按任意键回到标题', {
       ...FONT, fontSize: '11px', color: '#D8792D',
     }).setOrigin(0.5);
 
     const again = () => {
       audio.unlock();
-      this.scene.start('game', { status: this.status });
+      this.scene.start('title', { status: this.status });
     };
     this.time.delayedCall(900, () => {
       this.input.keyboard?.once('keydown', again);

@@ -49,7 +49,8 @@ src/
   audio/
     Synth.ts              Web Audio 合成基元
     AudioSystem.ts        游戏音频接口
-  scenes/                 Boot → Intro → Game(+Hud) → Ending
+  scenes/                 Boot → Title → Prologue → Game(+Hud) → Ending
+  ui/Dialogue.ts          终端式对白框
   ui/DebugPanel.ts        右侧调参台
 tools/fix_assets.py       美术资产自动修复 + 引擎清单生成
 ```

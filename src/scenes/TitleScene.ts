@@ -1,0 +1,157 @@
+import Phaser from 'phaser';
+import { COLORS } from '../config/tuning';
+import { Particles } from '../game/Particles';
+import { audio } from '../audio/AudioSystem';
+import type { AssetStatus } from './BootScene';
+
+const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
+
+/**
+ * 标题画面。
+ *
+ * 刻意不放主角 —— 主角第一次出现应该是在开场过场里、和族群在一起，
+ * 那个"它本来属于某个地方"的反差才有用。这里只有水、海雪，
+ * 和远处一点够不着的光。
+ */
+export class TitleScene extends Phaser.Scene {
+  private status!: AssetStatus;
+  private particles!: Particles;
+  private index = 0;
+  private items: Phaser.GameObjects.Text[] = [];
+
+  constructor() {
+    super('title');
+  }
+
+  init(data: { status: AssetStatus }): void {
+    this.status = data.status;
+  }
+
+  create(): void {
+    const { width, height } = this.scale;
+    this.cameras.main.setBackgroundColor(COLORS.abyss);
+
+    // 深水渐层：上方稍亮，越往下越暗
+    const g = this.add.graphics();
+    g.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
+    g.fillRect(0, 0, width, height);
+
+    // 远处那点光，缓慢明灭，永远够不着
+    const glow = this.add.circle(width * 0.72, height * 0.3, 3, COLORS.biolum);
+    this.tweens.add({
+      targets: glow, alpha: 0.15, scale: 2.6,
+      duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+    });
+
+    this.particles = new Particles(this, 5);
+
+    const title = this.add.text(width / 2, height * 0.36, '深海余烬与流光水母', {
+      ...FONT, fontSize: '26px', color: '#70FFE0',
+    }).setOrigin(0.5).setAlpha(0);
+
+    const sub = this.add.text(width / 2, height * 0.36 + 30, 'EMBERS OF THE ABYSS', {
+      ...FONT, fontSize: '10px', color: '#31D6C8',
+    }).setOrigin(0.5).setAlpha(0);
+    sub.setLetterSpacing?.(4);
+
+    this.tweens.add({ targets: [title, sub], alpha: 1, duration: 1400, delay: 400 });
+
+    const labels = ['开始下潜', '直接进入 Zone 1', '操作说明'];
+    labels.forEach((label, i) => {
+      const t = this.add.text(width / 2, height * 0.58 + i * 26, label, {
+        ...FONT, fontSize: '13px', color: '#59636B',
+      }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
+
+      t.on('pointerover', () => { this.index = i; this.refresh(); });
+      t.on('pointerdown', () => this.choose());
+      this.items.push(t);
+    });
+    this.tweens.add({ targets: this.items, alpha: 1, duration: 900, delay: 1100 });
+
+    this.add.text(width / 2, height - 24, '↑ ↓ 选择    Enter / 点击 确认', {
+      ...FONT, fontSize: '10px', color: '#25355F',
+    }).setOrigin(0.5);
+
+    const kb = this.input.keyboard!;
+    kb.on('keydown-UP', () => { this.index = (this.index + 2) % 3; this.refresh(); });
+    kb.on('keydown-DOWN', () => { this.index = (this.index + 1) % 3; this.refresh(); });
+    kb.on('keydown-W', () => { this.index = (this.index + 2) % 3; this.refresh(); });
+    kb.on('keydown-S', () => { this.index = (this.index + 1) % 3; this.refresh(); });
+    kb.on('keydown-ENTER', () => this.choose());
+    kb.on('keydown-SPACE', () => this.choose());
+
+    this.refresh();
+  }
+
+  private refresh(): void {
+    this.items.forEach((t, i) => {
+      t.setColor(i === this.index ? '#70FFE0' : '#59636B');
+      t.setText(i === this.index ? `· ${t.text.replace(/^· /, '')}` : t.text.replace(/^· /, ''));
+    });
+  }
+
+  private choose(): void {
+    // 音频必须在用户手势里解锁，标题菜单这一下正好
+    audio.unlock();
+
+    if (this.index === 2) {
+      this.scene.start('help', { status: this.status });
+      return;
+    }
+    this.scene.start(this.index === 0 ? 'prologue' : 'game', { status: this.status });
+  }
+
+  override update(_t: number, delta: number): void {
+    this.particles.update(
+      Math.min(delta / 1000, 1 / 30),
+      new Phaser.Geom.Rectangle(0, 0, this.scale.width, this.scale.height),
+      this.time.now,
+    );
+  }
+}
+
+/** 操作说明，从标题进入 */
+export class HelpScene extends Phaser.Scene {
+  private status!: AssetStatus;
+
+  constructor() { super('help'); }
+
+  init(data: { status: AssetStatus }): void { this.status = data.status; }
+
+  create(): void {
+    const { width, height } = this.scale;
+    this.cameras.main.setBackgroundColor(COLORS.abyss);
+
+    const rows: [string, string][] = [
+      ['空格 / 鼠标左键', '按住蓄力，松开喷射'],
+      ['A D / ← →', '转向'],
+      ['移动鼠标', '朝鼠标方向瞄准'],
+      ['Shift / 鼠标右键', '生物脉冲'],
+      ['R', '回到上一个检查点'],
+      ['M', '静音'],
+    ];
+
+    this.add.text(width / 2, height * 0.22, '操作', {
+      ...FONT, fontSize: '18px', color: '#70FFE0',
+    }).setOrigin(0.5);
+
+    rows.forEach(([k, v], i) => {
+      const y = height * 0.32 + i * 26;
+      this.add.text(width / 2 - 16, y, k, {
+        ...FONT, fontSize: '12px', color: '#D8792D',
+      }).setOrigin(1, 0.5);
+      this.add.text(width / 2 + 16, y, v, {
+        ...FONT, fontSize: '12px', color: '#DFFFF7',
+      }).setOrigin(0, 0.5);
+    });
+
+    this.add.text(width / 2, height - 40, '按任意键返回', {
+      ...FONT, fontSize: '11px', color: '#59636B',
+    }).setOrigin(0.5);
+
+    this.time.delayedCall(200, () => {
+      this.input.keyboard?.once('keydown', () => this.scene.start('title', { status: this.status }));
+      this.input.once('pointerdown', () => this.scene.start('title', { status: this.status }));
+    });
+  }
+}

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
-import { IntroScene } from './scenes/IntroScene';
+import { TitleScene, HelpScene } from './scenes/TitleScene';
+import { PrologueScene } from './scenes/PrologueScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
 import { EndingScene } from './scenes/EndingScene';
@@ -13,7 +14,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, IntroScene, GameScene, HudScene, EndingScene],
+  scene: [BootScene, TitleScene, HelpScene, PrologueScene, GameScene, HudScene, EndingScene],
 });
 
 // 右键用于生物脉冲，屏蔽浏览器菜单

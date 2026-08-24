@@ -65,7 +65,7 @@ export class BootScene extends Phaser.Scene {
 
     this.makePlaceholders();
 
-    this.scene.start('intro', { status });
+    this.scene.start('title', { status });
   }
 
   private ok(key: string): boolean {
