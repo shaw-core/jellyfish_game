@@ -95,6 +95,14 @@ const G: Record<GlyphId, Stroke[]> = {
 export const GLYPH_IDS = Object.keys(G) as GlyphId[];
 
 /**
+ * 正式贴图 ancient_glyphs_sheet 的帧号。
+ * 前 8 帧是未激活态，后 8 帧是注入电流的激活态，顺序与 GLYPH_IDS 一致。
+ */
+export function glyphFrame(id: GlyphId, active: boolean): number {
+  return GLYPH_IDS.indexOf(id) + (active ? 8 : 0);
+}
+
+/**
  * 把一个词根画到 Graphics 上。
  * x/y 是左上角，size 是边长（16 的整数倍最锐利）。
  */

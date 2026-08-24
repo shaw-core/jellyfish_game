@@ -77,6 +77,15 @@ tools/fix_assets.py       美术资产自动修复 + 引擎清单生成
 
 **黑暗用 RenderTexture + erase，不用 mask。** 光源每帧都在动且数量不定，重建 mask 比重画一次贵。
 
+## 美术资产批次
+
+`public/assets/` 里同时装着两批：
+
+- **R3 主资产**（主角、图块、敌人、闸门、喷口、光效、过场）—— 经 `tools/fix_assets.py` 修复过
+- **第一批开场资产**（标题 Logo、背景、族群、幼体、残骸、暗流、守炉者终端、碑文墙、8 个词根、对白框、菜单标记）
+
+开场批次的 Tag 区间写在 `src/scenes/BootScene.ts` 的 `OPENING_TAGS` 里，按 spritesheet 网格切，不依赖 JSON 解析。任何一张缺失都会退回程序图形，游戏照样能通关。
+
 ## 字体
 
 用的是 [Ark Pixel Font](https://github.com/TakWolf/ark-pixel-font)（OFL 1.1），12px 比例版。

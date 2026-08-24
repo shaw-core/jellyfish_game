@@ -14,10 +14,40 @@ export interface AssetStatus {
   gate: boolean;
   vent: boolean;
   cutscenes: boolean;
+  /** 第一批开场资产是否齐备 */
+  opening: boolean;
 }
 
 /** 各 Tag 是否循环 */
 const LOOPING = new Set(['idle', 'glide', 'pulse', 'sentry_patrol', 'sentry_alert', 'conduit_spark', 'thermal_vent']);
+
+/** 开场批次的 Tag 区间。来自交付包的 engine_manifest_opening_batch.json */
+export const OPENING_TAGS: Record<string, { key: string; from: number; to: number; fps: number; loop: boolean }[]> = {
+  menu_marker: [{ key: 'marker_breath', from: 0, to: 1, fps: 3.1, loop: true }],
+  swarm: [
+    { key: 'swarm_a', from: 0, to: 3, fps: 5.6, loop: true },
+    { key: 'swarm_b', from: 4, to: 7, fps: 5.6, loop: true },
+    { key: 'swarm_c', from: 8, to: 11, fps: 5.6, loop: true },
+  ],
+  juvenile: [
+    { key: 'juv_trapped', from: 0, to: 3, fps: 9, loop: true },
+    { key: 'juv_freed', from: 4, to: 6, fps: 7, loop: false },
+  ],
+  debris: [
+    { key: 'debris_intact', from: 0, to: 0, fps: 6, loop: false },
+    { key: 'debris_release', from: 1, to: 2, fps: 6, loop: false },
+  ],
+  undercurrent: [{ key: 'undercurrent', from: 0, to: 5, fps: 10, loop: true }],
+  keeper: [
+    { key: 'keeper_dormant', from: 0, to: 0, fps: 6, loop: false },
+    { key: 'keeper_waking', from: 1, to: 6, fps: 6, loop: false },
+    { key: 'keeper_active', from: 7, to: 10, fps: 5.5, loop: true },
+  ],
+};
+
+function sheet(scene: Phaser.Scene, key: string, file: string, w: number, h: number): void {
+  scene.load.spritesheet(key, `assets/${file}.png`, { frameWidth: w, frameHeight: h });
+}
 
 export class BootScene extends Phaser.Scene {
   private failed = new Set<string>();
@@ -41,6 +71,20 @@ export class BootScene extends Phaser.Scene {
     atlas('vent', 'fx_thermal_vent');
     atlas('pulsefx', 'fx_pulse_glow_r96');
 
+    // 第一批开场资产：网格规整，直接按 spritesheet 切，
+    // Tag 区间写在 OPENING_TAGS 里，不依赖 JSON 解析
+    this.load.image('title_logo', 'assets/title_logo.png');
+    this.load.image('title_backdrop', 'assets/title_backdrop.png');
+    this.load.image('dialogue_frame', 'assets/ui_dialogue_frame.png');
+    sheet(this, 'menu_marker', 'ui_menu_marker', 16, 16);
+    sheet(this, 'swarm', 'jellyfish_swarm_sheet', 24, 24);
+    sheet(this, 'juvenile', 'juvenile_trapped_sheet', 32, 32);
+    sheet(this, 'debris', 'debris_snare', 48, 32);
+    sheet(this, 'undercurrent', 'fx_undercurrent', 256, 144);
+    sheet(this, 'keeper', 'terminal_keeper_sheet', 48, 64);
+    sheet(this, 'glyphwall', 'glyph_wall_sheet', 128, 96);
+    sheet(this, 'glyphs', 'ancient_glyphs_sheet', 16, 16);
+
     this.load.json('manifest', 'assets/engine_manifest.json');
     this.load.image('cut1', 'assets/cutscene_01_separation.png');
     this.load.image('cut2', 'assets/cutscene_02_reunion.png');
@@ -56,6 +100,9 @@ export class BootScene extends Phaser.Scene {
       gate: this.ok('gate'),
       vent: this.ok('vent'),
       cutscenes: this.textures.exists('cut1') && this.textures.exists('cut2'),
+      opening: ['title_logo', 'swarm', 'juvenile', 'keeper', 'glyphwall'].every(
+        (k) => this.textures.exists(k),
+      ),
     };
 
     if (status.jelly) this.buildAnims('jelly');
@@ -64,6 +111,7 @@ export class BootScene extends Phaser.Scene {
     if (status.gate) this.buildAnims('gate', { open: 'gate_open' });
     if (this.ok('pulsefx')) this.buildAnims('pulsefx', { pulse: 'pulse_fx' });
 
+    this.buildOpeningAnims();
     this.makePlaceholders();
 
     this.scene.start('title', { status });
@@ -100,6 +148,22 @@ export class BootScene extends Phaser.Scene {
         frameRate: 1000 / ms,
         repeat: LOOPING.has(tag.name) ? -1 : 0,
       });
+    }
+  }
+
+  /** 开场批次用固定 Tag 表建动画，缺哪张就跳过哪张 */
+  private buildOpeningAnims(): void {
+    for (const [texKey, tags] of Object.entries(OPENING_TAGS)) {
+      if (!this.textures.exists(texKey)) continue;
+      for (const t of tags) {
+        if (this.anims.exists(t.key)) continue;
+        this.anims.create({
+          key: t.key,
+          frames: this.anims.generateFrameNumbers(texKey, { start: t.from, end: t.to }),
+          frameRate: t.fps,
+          repeat: t.loop ? -1 : 0,
+        });
+      }
     }
   }
 

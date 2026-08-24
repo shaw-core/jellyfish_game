@@ -22,7 +22,7 @@ const GLITCH = '▓▒░#§¤◊※';
  * 体现在字符上 —— 不需要任何一句台词解释"它坏了"。
  */
 export class Dialogue {
-  private box: Phaser.GameObjects.Rectangle;
+  private box: Phaser.GameObjects.GameObject;
   private nameText: Phaser.GameObjects.Text;
   private bodyText: Phaser.GameObjects.Text;
   private prompt: Phaser.GameObjects.Text;
@@ -44,8 +44,16 @@ export class Dialogue {
     const x = (width - w) / 2;
     const y = height - h - 28;
 
-    this.box = scene.add.rectangle(0, 0, w, h, 0x0b1026, 0.88).setOrigin(0, 0);
-    this.box.setStrokeStyle(1, 0x25355f);
+    // 九宫格：贴图是 64×64，边框 8px。用 NineSlice 拉伸时中间会平铺，
+    // 四角保持原始像素不被拉糊
+    if (scene.textures.exists('dialogue_frame')) {
+      this.box = scene.add.nineslice(0, 0, 'dialogue_frame', undefined, w, h, 8, 8, 8, 8)
+        .setOrigin(0, 0);
+    } else {
+      const r = scene.add.rectangle(0, 0, w, h, 0x0b1026, 0.88).setOrigin(0, 0);
+      r.setStrokeStyle(1, 0x25355f);
+      this.box = r;
+    }
 
         this.nameText = scene.add.text(12, 9, '', { ...FONT, fontSize: SIZE.small, color: '#D8792D' });
     this.bodyText = scene.add.text(12, 30, '', {

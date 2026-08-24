@@ -39,7 +39,10 @@ export class PrologueScene extends Phaser.Scene {
   private phaseTimer = 0;
   private swarm: Phaser.GameObjects.Sprite[] = [];
   private juvenile!: Phaser.GameObjects.Sprite;
-  private debris!: Phaser.GameObjects.Rectangle;
+  private debrisSprite?: Phaser.GameObjects.Sprite;
+  private undercurrentFx?: Phaser.GameObjects.TileSprite;
+  private keeper?: Phaser.GameObjects.Sprite;
+  private undercurrentTimer?: Phaser.Time.TimerEvent;
   private juvPos = { x: 300, y: 460 };
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private prevPulse = false;
@@ -113,38 +116,57 @@ export class PrologueScene extends Phaser.Scene {
   /* ---------------------------------------------------------------- */
 
   private buildSwarm(): void {
-    const key = this.status.jelly ? 'jelly' : 'jelly-placeholder';
+    const hasSwarm = this.textures.exists('swarm');
+    const variants = ['swarm_a', 'swarm_b', 'swarm_c'];
+    const fallback = this.status.jelly ? 'jelly' : 'jelly-placeholder';
 
     for (let i = 0; i < 14; i++) {
       const s = this.add.sprite(
         420 + Math.random() * 1100,
         180 + Math.random() * 520,
-        key,
+        hasSwarm ? 'swarm' : fallback,
       );
       s.setDepth(6);
-      s.setScale(0.45 + Math.random() * 0.4);
-      s.setAlpha(0.5 + Math.random() * 0.3);
-      if (this.status.jelly) {
-        s.play('idle');
+      s.setAlpha(0.55 + Math.random() * 0.3);
+
+      if (hasSwarm) {
+        s.play(variants[i % 3]);
         // 相位错开，整群不会同步呼吸
         s.anims.setProgress(Math.random());
+      } else {
+        s.setScale(0.45 + Math.random() * 0.4);
+        if (this.status.jelly) {
+          s.play('idle');
+          s.anims.setProgress(Math.random());
+        }
       }
       this.swarm.push(s);
     }
 
-    // 被残骸缠住的幼体，在主角左后方
-    this.debris = this.add.rectangle(this.juvPos.x + 14, this.juvPos.y + 6, 30, 8, 0x5b2d19)
-      .setDepth(7).setAngle(28);
+    // 幼体的 trapped 帧里已经画了缠住它的细杆，debris 是它挂住的
+    // 那截更大的残骸 —— 放在身后偏下，两者不会叠成一团
+    if (this.textures.exists('debris')) {
+      this.debrisSprite = this.add.sprite(this.juvPos.x + 6, this.juvPos.y + 20, 'debris')
+        .setDepth(7);
+      this.debrisSprite.play('debris_intact');
+    }
 
-    this.juvenile = this.add.sprite(this.juvPos.x, this.juvPos.y, key).setDepth(8);
-    this.juvenile.setScale(0.55);
-    if (this.status.jelly) this.juvenile.play('idle');
+    const hasJuv = this.textures.exists('juvenile');
+    this.juvenile = this.add.sprite(
+      this.juvPos.x, this.juvPos.y, hasJuv ? 'juvenile' : fallback,
+    ).setDepth(8);
 
-    // 微弱求救式明灭 —— 不用一个字说明它有麻烦
-    this.tweens.add({
-      targets: this.juvenile, alpha: 0.35,
-      duration: 620, yoyo: true, repeat: -1, ease: 'Sine.InOut',
-    });
+    if (hasJuv) {
+      // 求救式明灭已经画在 trapped 帧里，不要再叠 alpha 补间，两层明灭会打架
+      this.juvenile.play('juv_trapped');
+    } else {
+      this.juvenile.setScale(0.55);
+      if (this.status.jelly) this.juvenile.play('idle');
+      this.tweens.add({
+        targets: this.juvenile, alpha: 0.35,
+        duration: 620, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+      });
+    }
   }
 
   private positionHint(): void {
@@ -185,6 +207,12 @@ export class PrologueScene extends Phaser.Scene {
     }
 
     this.runPhase(dt);
+
+    if (this.undercurrentFx) {
+      const cam = this.cameras.main;
+      this.undercurrentFx.setPosition(cam.midPoint.x, cam.midPoint.y);
+      this.undercurrentFx.tilePositionX += 620 * dt;
+    }
 
     this.particles.update(dt, this.cameras.main.worldView, this.time.now);
     audio.updateAmbient(dt);
@@ -293,7 +321,12 @@ export class PrologueScene extends Phaser.Scene {
     audio.relayOn();
     this.particles.pulse(this.juvPos.x, this.juvPos.y, 90);
     this.tweens.killTweensOf(this.juvenile);
-    this.tweens.add({ targets: this.debris, alpha: 0, angle: 90, duration: 700 });
+
+    if (this.debrisSprite) {
+      this.debrisSprite.play('debris_release');
+      this.tweens.add({ targets: this.debrisSprite, alpha: 0, duration: 900, delay: 300 });
+    }
+    if (this.textures.exists('juvenile')) this.juvenile.play('juv_freed');
     this.tweens.add({ targets: this.juvenile, alpha: 1, duration: 300 });
     // 幼体被顶开后追着族群走 —— 它得救了，这件事不需要台词
     this.tweens.add({
@@ -307,13 +340,31 @@ export class PrologueScene extends Phaser.Scene {
     this.setHint('');
     this.cameras.main.flash(200, 11, 16, 38);
     audio.hurt();
+
+    // 暗流用 TileSprite 铺满视口并横向滚动，比单张贴图更像"一股流过去的东西"
+    if (this.textures.exists('undercurrent')) {
+      const cam = this.cameras.main;
+      this.undercurrentFx = this.add.tileSprite(
+        cam.midPoint.x, cam.midPoint.y, cam.width / cam.zoom + 512, 288, 'undercurrent',
+      ).setDepth(40).setAlpha(0);
+      // TileSprite 不支持动画，手动轮帧
+      let f = 0;
+      this.undercurrentTimer = this.time.addEvent({
+        delay: 100, loop: true,
+        callback: () => this.undercurrentFx?.setFrame((f = (f + 1) % 6)),
+      });
+      this.tweens.add({ targets: this.undercurrentFx, alpha: 0.85, duration: 350 });
+    }
   }
 
   private onLand(): void {
     // 落到断裂带底部：一片全黑，只剩主角
     this.swarm.forEach((s) => s.destroy());
     this.juvenile.destroy();
-    this.debris.destroy();
+    this.debrisSprite?.destroy();
+    this.undercurrentFx?.destroy();
+    this.undercurrentFx = undefined;
+    this.undercurrentTimer?.remove();
 
     this.cameras.main.fadeIn(1200, 11, 16, 38);
     this.darkOverlay.setAlpha(0.97);
@@ -333,13 +384,32 @@ export class PrologueScene extends Phaser.Scene {
     this.particles.pulse(this.jelly.x, this.jelly.y, 300);
     this.tweens.add({ targets: this.darkOverlay, alpha: 0.55, duration: 400, yoyo: true });
 
-    // 被照亮的一整面碑文。用程序画而不是拿 Unicode 符号顶替 ——
-    // 这是玩家第一次见到那个文明的文字，它不该是"别人的字"
-    const wall = this.add.graphics().setDepth(52).setAlpha(0);
-    drawGlyphWall(wall, this.jelly.x, this.jelly.y - 96, 6, 2, 16, 8, 0x31d6c8, 1);
+    // 被照亮的一整面碑文
+    let wall: Phaser.GameObjects.GameObject;
+    if (this.textures.exists('glyphwall')) {
+      const w = this.add.sprite(this.jelly.x, this.jelly.y - 104, 'glyphwall', 1)
+        .setDepth(52).setAlpha(0).setScale(2);
+      wall = w;
+    } else {
+      const g = this.add.graphics().setDepth(52).setAlpha(0);
+      drawGlyphWall(g, this.jelly.x, this.jelly.y - 96, 6, 2, 16, 8, 0x31d6c8, 1);
+      wall = g;
+    }
 
     this.tweens.add({ targets: wall, alpha: 0.95, duration: 900 });
-    this.tweens.add({ targets: wall, alpha: 0.22, duration: 2400, delay: 1200 });
+    this.tweens.add({ targets: wall, alpha: 0.3, duration: 2400, delay: 1200 });
+
+    // 守炉者：先亮起，再说话。醒来那几帧本身就是它的自我介绍
+    if (this.textures.exists('keeper')) {
+      this.keeper = this.add.sprite(this.jelly.x + 96, this.jelly.y + 8, 'keeper')
+        .setDepth(52).setScale(2).setAlpha(0);
+      this.keeper.play('keeper_dormant');
+      this.tweens.add({ targets: this.keeper, alpha: 1, duration: 700, delay: 600 });
+      this.time.delayedCall(1300, () => {
+        this.keeper?.play('keeper_waking');
+        this.keeper?.once('animationcomplete', () => this.keeper?.play('keeper_active'));
+      });
+    }
 
     this.time.delayedCall(1800, () => {
       this.dialogue.play([

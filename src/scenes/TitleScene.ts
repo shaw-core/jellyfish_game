@@ -18,6 +18,7 @@ export class TitleScene extends Phaser.Scene {
   private particles!: Particles;
   private index = 0;
   private items: Phaser.GameObjects.Text[] = [];
+  private marker?: Phaser.GameObjects.Sprite;
 
   constructor() {
     super('title');
@@ -31,30 +32,35 @@ export class TitleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor(COLORS.abyss);
 
-    // 深水渐层：上方稍亮，越往下越暗
-    const g = this.add.graphics();
-    g.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
-    g.fillRect(0, 0, width, height);
-
-    // 远处那点光，缓慢明灭，永远够不着
-    const glow = this.add.circle(width * 0.72, height * 0.3, 3, COLORS.biolum);
-    this.tweens.add({
-      targets: glow, alpha: 0.15, scale: 2.6,
-      duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.InOut',
-    });
+    if (this.textures.exists('title_backdrop')) {
+      // 背景是 480×270 的点阵，只按整数倍放大，非整数倍会把像素糊掉；
+      // 放大后不足的边缘由底色补，所以底色必须和背景四角一致
+      const img = this.add.image(width / 2, height / 2, 'title_backdrop');
+      const scale = Math.max(1, Math.ceil(Math.max(width / 480, height / 270)));
+      img.setScale(scale).setDepth(0);
+    } else {
+      const g = this.add.graphics();
+      g.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
+      g.fillRect(0, 0, width, height);
+    }
 
     this.particles = new Particles(this, 5);
 
-    const title = this.add.text(width / 2, height * 0.36, '深海余烬与流光水母', {
-      ...FONT, fontSize: SIZE.title, color: '#70FFE0',
-    }).setOrigin(0.5).setAlpha(0);
-
-    const sub = this.add.text(width / 2, height * 0.36 + 30, 'EMBERS OF THE ABYSS', {
-      ...FONT, fontSize: SIZE.small, color: '#31D6C8',
-    }).setOrigin(0.5).setAlpha(0);
-    sub.setLetterSpacing?.(4);
-
-    this.tweens.add({ targets: [title, sub], alpha: 1, duration: 1400, delay: 400 });
+    // Logo 自带英文副标与「余烬」的暖橙，不要再叠文字
+    const heads: Phaser.GameObjects.GameObject[] = [];
+    if (this.textures.exists('title_logo')) {
+      const logo = this.add.image(width / 2, height * 0.34, 'title_logo');
+      const s = Math.max(1, Math.floor(Math.min(width * 0.8 / 512, 2)));
+      logo.setScale(s).setAlpha(0).setDepth(2);
+      heads.push(logo);
+    } else {
+      heads.push(
+        this.add.text(width / 2, height * 0.34, '深海余烬与流光水母', {
+          ...FONT, fontSize: SIZE.title, color: '#70FFE0',
+        }).setOrigin(0.5).setAlpha(0),
+      );
+    }
+    this.tweens.add({ targets: heads, alpha: 1, duration: 1400, delay: 400 });
 
     const labels = ['开始下潜', '直接进入 Zone 1', '操作说明'];
     labels.forEach((label, i) => {
@@ -65,6 +71,7 @@ export class TitleScene extends Phaser.Scene {
       t.on('pointerover', () => { this.index = i; this.refresh(); });
       t.on('pointerdown', () => this.choose());
       this.items.push(t);
+      t.setDepth(2);
     });
     this.tweens.add({ targets: this.items, alpha: 1, duration: 900, delay: 1100 });
 
@@ -80,14 +87,22 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-ENTER', () => this.choose());
     kb.on('keydown-SPACE', () => this.choose());
 
+    if (this.textures.exists('menu_marker')) {
+      this.marker = this.add.sprite(0, 0, 'menu_marker').setDepth(2);
+      this.marker.play('marker_breath');
+    }
+
     this.refresh();
   }
 
   private refresh(): void {
     this.items.forEach((t, i) => {
       t.setColor(i === this.index ? '#70FFE0' : '#59636B');
-      t.setText(i === this.index ? `· ${t.text.replace(/^· /, '')}` : t.text.replace(/^· /, ''));
     });
+    const active = this.items[this.index];
+    if (this.marker && active) {
+      this.marker.setPosition(active.x - active.width / 2 - 14, active.y);
+    }
   }
 
   private choose(): void {
