@@ -7,6 +7,7 @@ import { Drone } from '../game/Drone';
 import { Conduit, Gate, Relay, Vent } from '../game/props';
 import { Darkness, type LightSource } from '../game/Darkness';
 import type { AssetStatus } from './BootScene';
+import { audio } from '../audio/AudioSystem';
 
 interface Manifest {
   blob47: BlobTables;
@@ -34,6 +35,9 @@ export class GameScene extends Phaser.Scene {
   private won = false;
   private pointerAim = false;
   private prevPulseKey = false;
+  private prevState = '';
+  private prevAlerted = false;
+  private sparkCooldown = 0;
 
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -103,9 +107,10 @@ export class GameScene extends Phaser.Scene {
       left: kb.addKey(K.LEFT), right: kb.addKey(K.RIGHT),
       a: kb.addKey(K.A), d: kb.addKey(K.D),
       space: kb.addKey(K.SPACE), shift: kb.addKey(K.SHIFT),
-      r: kb.addKey(K.R),
+      r: kb.addKey(K.R), m: kb.addKey(K.M),
     };
     kb.on('keydown-R', () => this.respawn());
+    kb.on('keydown-M', () => this.setMuted(!audio.muted));
     this.input.on('pointermove', () => { this.pointerAim = true; });
     kb.on('keydown', (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(e.code)) this.pointerAim = false;
@@ -123,6 +128,7 @@ export class GameScene extends Phaser.Scene {
     const wasPulsing = this.jelly.pulsing;
 
     this.jelly.update(dt, input, this.tuning, this.flags, this.level);
+    this.updateAudio(dt);
 
     // 喷口推力
     for (const v of this.vents) {
@@ -158,6 +164,62 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------------------------------------------------------------- */
 
+  /**
+   * 每帧的音频状态同步。
+   *
+   * 蓄力音是常驻振荡器，按状态开关；电弧和喷口按距离衰减 ——
+   * 全场同响会让玩家分不清危险在哪边。
+   */
+  private updateAudio(dt: number): void {
+    if (!audio.ready) return;
+    audio.updateAmbient(dt);
+
+    // 蓄力
+    if (this.jelly.state === 'charge') {
+      if (this.prevState !== 'charge') audio.startCharge();
+      audio.updateCharge(this.jelly.charge);
+    } else if (this.prevState === 'charge') {
+      audio.stopCharge();
+    }
+    // 蓄力 -> 喷射：用上一帧的蓄力量决定音量
+    if (this.jelly.state === 'thrust' && this.prevState !== 'thrust') {
+      audio.thrust(this.lastCharge);
+    }
+    this.lastCharge = this.jelly.state === 'charge' ? this.jelly.charge : this.lastCharge;
+    this.prevState = this.jelly.state;
+
+    if (this.jelly.bumpStrength > 0) audio.bump(this.jelly.bumpStrength);
+
+    // 喷口：取最近那个的接近度
+    let ventProx = 0;
+    for (const v of this.vents) {
+      const d = Math.hypot(v.x - this.jelly.x, v.y - this.jelly.y);
+      ventProx = Math.max(ventProx, 1 - Phaser.Math.Clamp(d / 340, 0, 1));
+    }
+    audio.setVentProximity(ventProx);
+
+    // 电弧：只在放电帧触发，且按距离衰减
+    this.sparkCooldown -= dt;
+    if (this.sparkCooldown <= 0) {
+      for (const c of this.conduits) {
+        if (!c.live) continue;
+        const d = Math.hypot(c.x - this.jelly.x, c.y - this.jelly.y);
+        if (d < 420) {
+          audio.spark(Phaser.Math.Clamp(d / 420, 0, 1));
+          this.sparkCooldown = 0.14;
+          break;
+        }
+      }
+    }
+
+    // 被发现的那一下
+    const anyAlerted = this.drones.some((d) => d.mode === 'alert');
+    if (anyAlerted && !this.prevAlerted) audio.alerted();
+    this.prevAlerted = anyAlerted;
+  }
+
+  private lastCharge = 0;
+
   private readInput(): JellyfishInput {
     const turn =
       (this.keys.left.isDown || this.keys.a.isDown ? -1 : 0) +
@@ -187,15 +249,17 @@ export class GameScene extends Phaser.Scene {
 
   private firePulse(): void {
     if (this.status.jelly) this.pulseFx.play('pulse_fx');
+    audio.pulse();
     let lit = 0;
     for (const r of this.relays) {
-      r.tryActivate(this.jelly.x, this.jelly.y, this.tuning.pulseRadius);
+      if (r.tryActivate(this.jelly.x, this.jelly.y, this.tuning.pulseRadius)) audio.relayOn();
       if (r.active) lit++;
     }
     this.events.emit('objective', lit, this.relays.length);
 
     if (lit === this.relays.length && !this.gate.open) {
       this.gate.setOpen(this);
+      audio.gateOpen();
       for (const c of this.level.gate) this.level.solid[c.y][c.x] = false;
       this.events.emit('toast', '闸门已开启 —— 前往东侧出口');
     }
@@ -203,6 +267,7 @@ export class GameScene extends Phaser.Scene {
 
   private damage(): void {
     if (!this.jelly.hurt(this.tuning)) return;
+    audio.hurt();
     this.cameras.main.shake(160, 0.006);
     this.events.emit('health', this.jelly.health);
     if (this.jelly.health <= 0) this.respawn();
@@ -310,6 +375,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  setMuted(m: boolean): void {
+    audio.setMuted(m);
+    this.events.emit('toast', m ? '静音' : '声音已开');
+  }
+
   get readout() {
     return {
       state: this.jelly.state,
@@ -319,6 +389,7 @@ export class GameScene extends Phaser.Scene {
       relays: this.relays.filter((r) => r.active).length,
       totalRelays: this.relays.length,
       assets: this.status,
+      muted: audio.muted,
     };
   }
 }

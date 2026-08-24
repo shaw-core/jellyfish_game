@@ -35,6 +35,8 @@ export class Jellyfish {
   /** Pulse 剩余时间与冷却 */
   pulseTimer = 0;
   pulseCooldown = 0;
+  /** 本帧撞墙的强度（撞击前速度 / maxSpeed），供音效与震屏使用 */
+  bumpStrength = 0;
 
   private stateTimer = 0;
   private currentAnim = '';
@@ -138,6 +140,7 @@ export class Jellyfish {
 
   /** 圆 vs 图块网格，逐轴分离，避免斜向卡角 */
   private resolveCollision(t: Tuning, level: LevelData): void {
+    this.bumpStrength = 0;
     const r = t.bodyRadius;
     const solid = (px: number, py: number): boolean => {
       const cx = Math.floor(px / TILE);
@@ -169,12 +172,14 @@ export class Jellyfish {
           ? Math.floor((this.sprite.x + r) / TILE) * TILE - r - 0.01
           : Math.ceil((this.sprite.x - r) / TILE) * TILE + r + 0.01;
         this.sprite.x = edge;
+        this.bumpStrength = Math.max(this.bumpStrength, Math.abs(v) / t.maxSpeed);
         this.velocity.x = -v * t.wallBounce;
       } else {
         const edge = dir > 0
           ? Math.floor((this.sprite.y + r) / TILE) * TILE - r - 0.01
           : Math.ceil((this.sprite.y - r) / TILE) * TILE + r + 0.01;
         this.sprite.y = edge;
+        this.bumpStrength = Math.max(this.bumpStrength, Math.abs(v) / t.maxSpeed);
         this.velocity.y = -v * t.wallBounce;
       }
     }

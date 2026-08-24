@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
 import type { AssetStatus } from './BootScene';
+import { audio } from '../audio/AudioSystem';
 
 const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
@@ -20,6 +21,7 @@ export class EndingScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor(COLORS.abyss);
     this.cameras.main.fadeIn(800, 11, 16, 38);
+    audio.victory();
 
     if (this.status.cutscenes) {
       const img = this.add.image(width / 2, height / 2 - 40, 'cut2');
@@ -40,7 +42,10 @@ export class EndingScene extends Phaser.Scene {
       ...FONT, fontSize: '11px', color: '#D8792D',
     }).setOrigin(0.5);
 
-    const again = () => this.scene.start('game', { status: this.status });
+    const again = () => {
+      audio.unlock();
+      this.scene.start('game', { status: this.status });
+    };
     this.time.delayedCall(900, () => {
       this.input.keyboard?.once('keydown', again);
       this.input.once('pointerdown', again);

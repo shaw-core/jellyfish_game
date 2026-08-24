@@ -71,8 +71,9 @@ const GROUPS: Group[] = [
   },
 ];
 
-const TOGGLES: { key: keyof DebugFlags; label: string }[] = [
+const TOGGLES: { key: keyof DebugFlags | 'muted'; label: string }[] = [
   { key: 'useRawMotionFrames', label: '用原始 charge/thrust/glide 帧（可看到资产缺陷）' },
+  { key: 'muted', label: '静音（也可以按 M）' },
   { key: 'lightsOn', label: '关闭黑暗' },
   { key: 'showGrid', label: '32px 图块网格' },
   { key: 'showColliders', label: '碰撞体' },
@@ -129,10 +130,14 @@ export function mountDebugPanel(scene: GameScene): void {
     wrap.className = 'toggle';
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.checked = scene.flags[t.key];
-    cb.addEventListener('change', () => {
-      scene.flags[t.key] = cb.checked;
-    });
+    if (t.key === 'muted') {
+      cb.checked = false;
+      cb.addEventListener('change', () => scene.setMuted(cb.checked));
+    } else {
+      const flag = t.key;
+      cb.checked = scene.flags[flag];
+      cb.addEventListener('change', () => { scene.flags[flag] = cb.checked; });
+    }
     wrap.append(cb, document.createTextNode(t.label));
     vis.appendChild(wrap);
   }

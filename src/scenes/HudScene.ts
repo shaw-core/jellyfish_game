@@ -23,7 +23,7 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0.5).setAlpha(0);
 
     this.add.text(16, this.scale.height - 26,
-      '空格/左键 蓄力喷射   ·   Shift/右键 生物脉冲   ·   A D 转向   ·   R 重生',
+      '空格/左键 蓄力喷射   ·   Shift/右键 生物脉冲   ·   A D 转向   ·   R 重生   ·   M 静音',
       { ...FONT, fontSize: '11px', color: '#25355F' });
 
     const game = this.scene.get('game') as Phaser.Scene & { readout?: { health: number; relays: number; totalRelays: number } };

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
 import type { AssetStatus } from './BootScene';
+import { audio } from '../audio/AudioSystem';
 
 const FONT = { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' };
 
@@ -55,7 +56,11 @@ export class IntroScene extends Phaser.Scene {
       }),
     });
 
-    const go = () => this.scene.start('game', { status: this.status });
+    // 浏览器要求用户手势之后才能出声，开场这一下按键正好
+    const go = () => {
+      audio.unlock();
+      this.scene.start('game', { status: this.status });
+    };
     this.input.keyboard?.once('keydown', go);
     this.input.once('pointerdown', go);
   }
