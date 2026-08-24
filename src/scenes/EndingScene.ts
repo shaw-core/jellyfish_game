@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
 import type { AssetStatus } from './BootScene';
 import { audio } from '../audio/AudioSystem';
+import { continueGate } from '../ui/continueGate';
 import { FONT, SIZE } from '../ui/theme';
 
 
@@ -46,9 +47,6 @@ export class EndingScene extends Phaser.Scene {
       audio.unlock();
       this.scene.start('title', { status: this.status });
     };
-    this.time.delayedCall(900, () => {
-      this.input.keyboard?.once('keydown', again);
-      this.input.once('pointerdown', again);
-    });
+    continueGate(this, again, 1200);
   }
 }

@@ -23,6 +23,8 @@ export class Conduit {
   ) {
     this.sprite = scene.add.sprite(x, y, hasAnims ? 'enemies' : 'conduit-placeholder');
     this.sprite.setDepth(14);
+    // 顶边对齐：断线是挂着的，不是浮在水里的
+    this.sprite.setOrigin(0.5, 0);
     if (hasAnims) this.sprite.play('conduit_spark');
   }
 
@@ -34,7 +36,8 @@ export class Conduit {
   }
 
   hits(px: number, py: number, r: number): boolean {
-    return this.live && Math.hypot(px - this.x, py - this.y) < 22 + r;
+    // 判定区跟着贴图往下挪半格，对齐实际垂下来的那截线
+    return this.live && Math.hypot(px - this.x, py - (this.y + 20)) < 20 + r;
   }
 }
 

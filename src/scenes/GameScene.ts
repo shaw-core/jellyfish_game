@@ -84,7 +84,10 @@ export class GameScene extends Phaser.Scene {
     }
     const sparkFrames = manifest?.damageFrames?.conduit_spark ?? [19, 20, 21];
     for (const p of this.level.conduits) {
-      this.conduits.push(new Conduit(this, p.x, p.y, sparkFrames, 16, this.status.enemies));
+      // 电缆从顶板垂下来，所以锚在格子顶边而不是中心
+      this.conduits.push(new Conduit(
+        this, p.x, p.y - TILE / 2, sparkFrames, 16, this.status.enemies,
+      ));
     }
     for (const p of this.level.vents) this.vents.push(new Vent(this, p.x, p.y, this.status.vent));
     for (const p of this.level.relays) this.relays.push(new Relay(this, p.x, p.y));
@@ -338,8 +341,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // 出口在闸门以东
-    if (this.gate.open && this.jelly.x > (this.level.width - 4) * TILE) {
+    // 出口在闸门之下的进水闸厅 —— 守炉者让你往下走，出口就必须在下面
+    if (this.gate.open && this.jelly.y > 34 * TILE) {
       this.won = true;
       this.scene.stop('hud');
       this.scene.start('ending', { status: this.status });

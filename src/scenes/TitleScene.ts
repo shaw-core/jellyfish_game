@@ -4,6 +4,7 @@ import { Particles } from '../game/Particles';
 import { audio } from '../audio/AudioSystem';
 import type { AssetStatus } from './BootScene';
 import { FONT, SIZE } from '../ui/theme';
+import { continueGate } from '../ui/continueGate';
 
 
 /**
@@ -69,7 +70,7 @@ export class TitleScene extends Phaser.Scene {
       }).setOrigin(0.5).setAlpha(0).setInteractive({ useHandCursor: true });
 
       t.on('pointerover', () => { this.index = i; this.refresh(); });
-      t.on('pointerdown', () => this.choose());
+      t.on('pointerup', () => this.choose());
       this.items.push(t);
       t.setDepth(2);
     });
@@ -84,8 +85,10 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-DOWN', () => { this.index = (this.index + 1) % 3; this.refresh(); });
     kb.on('keydown-W', () => { this.index = (this.index + 2) % 3; this.refresh(); });
     kb.on('keydown-S', () => { this.index = (this.index + 1) % 3; this.refresh(); });
-    kb.on('keydown-ENTER', () => this.choose());
-    kb.on('keydown-SPACE', () => this.choose());
+    // 用 keyup 确认：keydown 会在进入下个场景后继续重复，
+    // 把下个场景的「按任意键」闸门一起触发掉
+    kb.on('keyup-ENTER', () => this.choose());
+    kb.on('keyup-SPACE', () => this.choose());
 
     if (this.textures.exists('menu_marker')) {
       this.marker = this.add.sprite(0, 0, 'menu_marker').setDepth(2);
@@ -164,9 +167,6 @@ export class HelpScene extends Phaser.Scene {
       ...FONT, fontSize: SIZE.small, color: '#59636B',
     }).setOrigin(0.5);
 
-    this.time.delayedCall(200, () => {
-      this.input.keyboard?.once('keydown', () => this.scene.start('title', { status: this.status }));
-      this.input.once('pointerdown', () => this.scene.start('title', { status: this.status }));
-    });
+    continueGate(this, () => this.scene.start('title', { status: this.status }));
   }
 }

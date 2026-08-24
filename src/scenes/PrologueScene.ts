@@ -358,7 +358,6 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private onLand(): void {
-    // 落到断裂带底部：一片全黑，只剩主角
     this.swarm.forEach((s) => s.destroy());
     this.juvenile.destroy();
     this.debrisSprite?.destroy();
@@ -366,11 +365,63 @@ export class PrologueScene extends Phaser.Scene {
     this.undercurrentFx = undefined;
     this.undercurrentTimer?.remove();
 
-    this.cameras.main.fadeIn(1200, 11, 16, 38);
-    this.darkOverlay.setAlpha(0.97);
-    this.jelly.setPosition(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y);
+    const cx = this.cameras.main.midPoint.x;
+    const cy = this.cameras.main.midPoint.y;
+    this.jelly.setPosition(cx, cy - 40);
 
-    this.time.delayedCall(1400, () => this.onWake());
+    // 落地处不能是一片黑 void —— 玩家得看出自己掉进了一个"建筑物"里，
+    // 否则后面碑文和终端就是凭空浮在黑暗中，完全读不出发生了什么
+    this.buildLandingChamber(cx, cy);
+
+    this.cameras.main.fadeIn(1400, 11, 16, 38);
+    this.darkOverlay.setAlpha(0.94);
+
+    this.time.delayedCall(1600, () => this.onWake());
+  }
+
+  /**
+   * 落地点：进水格栅底部。
+   *
+   * 三样东西缺一不可 ——
+   *   地面：让主角有"落"下来的落点，而不是悬在空中
+   *   后墙：碑文得刻在墙上，终端得装在墙上
+   *   上方漏下来的光柱：告诉玩家你是从那儿掉下来的，而且那儿很远
+   */
+  private buildLandingChamber(cx: number, cy: number): void {
+    const g = this.add.graphics().setDepth(3);
+
+    // 岩层地面
+    g.fillStyle(0x1b2a4a, 1);
+    g.fillRect(cx - 340, cy + 34, 680, 120);
+    g.fillStyle(0x25355f, 1);
+    g.fillRect(cx - 340, cy + 34, 680, 4);
+
+    // 后方的金属衬里，带铆钉接缝
+    g.fillStyle(0x0b1026, 1);
+    g.fillRect(cx - 340, cy - 200, 680, 234);
+    g.lineStyle(1, 0x3a3d40, 0.85);
+    for (let x = cx - 336; x < cx + 340; x += 32) {
+      g.lineBetween(x, cy - 200, x, cy + 34);
+    }
+    for (let y = cy - 200; y < cy + 34; y += 32) {
+      g.lineBetween(cx - 340, y, cx + 340, y);
+    }
+
+    // 头顶那道破口漏下来的微光。做成上宽下窄的梯形，
+    // 越往下越淡 —— 距离感就是这么给出来的
+    const beam = this.add.graphics().setDepth(4).setAlpha(0.16);
+    beam.fillStyle(0x31d6c8, 1);
+    beam.beginPath();
+    beam.moveTo(cx - 26, cy - 200);
+    beam.lineTo(cx + 26, cy - 200);
+    beam.lineTo(cx + 74, cy + 34);
+    beam.lineTo(cx - 74, cy + 34);
+    beam.closePath();
+    beam.fillPath();
+    this.tweens.add({
+      targets: beam, alpha: 0.07,
+      duration: 2800, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+    });
   }
 
   /**
@@ -387,7 +438,7 @@ export class PrologueScene extends Phaser.Scene {
     // 被照亮的一整面碑文
     let wall: Phaser.GameObjects.GameObject;
     if (this.textures.exists('glyphwall')) {
-      const w = this.add.sprite(this.jelly.x, this.jelly.y - 104, 'glyphwall', 1)
+      const w = this.add.sprite(this.jelly.x - 60, this.jelly.y - 96, 'glyphwall', 1)
         .setDepth(52).setAlpha(0).setScale(2);
       wall = w;
     } else {
@@ -401,7 +452,7 @@ export class PrologueScene extends Phaser.Scene {
 
     // 守炉者：先亮起，再说话。醒来那几帧本身就是它的自我介绍
     if (this.textures.exists('keeper')) {
-      this.keeper = this.add.sprite(this.jelly.x + 96, this.jelly.y + 8, 'keeper')
+      this.keeper = this.add.sprite(this.jelly.x + 120, this.jelly.y - 20, 'keeper')
         .setDepth(52).setScale(2).setAlpha(0);
       this.keeper.play('keeper_dormant');
       this.tweens.add({ targets: this.keeper, alpha: 1, duration: 700, delay: 600 });
@@ -413,7 +464,9 @@ export class PrologueScene extends Phaser.Scene {
 
     this.time.delayedCall(1800, () => {
       this.dialogue.play([
-        { text: '有什么东西在黑暗里亮了一下。\n不是你。', hold: 2.6 },
+        { text: '你停在一片金属地面上。\n头顶很远的地方，有一道你掉下来的口子。', hold: 3.0 },
+        { text: '受惊的时候，你会发光。这一次也是。', hold: 2.4 },
+        { text: '光扫过墙面 —— 那上面刻满了东西。\n然后，墙的另一头亮了。', hold: 3.0 },
         {
           who: '守炉者',
           text: '……检测到生物电。',
