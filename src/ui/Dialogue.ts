@@ -49,7 +49,11 @@ export class Dialogue {
 
     // 九宫格：贴图是 64×64，边框 8px。用 NineSlice 拉伸时中间会平铺，
     // 四角保持原始像素不被拉糊
-    if (scene.textures.exists('dialogue_frame')) {
+    if (scene.textures.exists('dialogue_frame2')) {
+      // v2 带顶部状态栏与信号强度条，边框 12px
+      this.box = scene.add.nineslice(0, 0, 'dialogue_frame2', undefined, w, h, 12, 12, 12, 12)
+        .setOrigin(0, 0);
+    } else if (scene.textures.exists('dialogue_frame')) {
       this.box = scene.add.nineslice(0, 0, 'dialogue_frame', undefined, w, h, 8, 8, 8, 8)
         .setOrigin(0, 0);
     } else {
@@ -58,8 +62,8 @@ export class Dialogue {
       this.box = r;
     }
 
-        this.nameText = scene.add.text(12, 9, '', { ...FONT, fontSize: SIZE.small, color: '#D8792D' });
-    this.bodyText = scene.add.text(12, 30, '', {
+        this.nameText = scene.add.text(16, 10, '', { ...FONT, fontSize: SIZE.small, color: '#D8792D' });
+    this.bodyText = scene.add.text(16, 34, '', {
       ...FONT, fontSize: SIZE.body, color: '#DFFFF7',
       wordWrap: { width: w - 24 }, lineSpacing: 5,
     });

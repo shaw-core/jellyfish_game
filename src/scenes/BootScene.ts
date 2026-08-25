@@ -44,6 +44,29 @@ export const OPENING_TAGS: Record<string, { key: string; from: number; to: numbe
     { key: 'door_scan', from: 1, to: 2, fps: 2.4, loop: true },
     { key: 'door_open', from: 3, to: 5, fps: 4, loop: false },
   ],
+  // 第二批
+  swarm_far: [
+    { key: 'swarm_far_a', from: 0, to: 2, fps: 4, loop: true },
+    { key: 'swarm_far_b', from: 3, to: 5, fps: 4, loop: true },
+    { key: 'swarm_far_c', from: 6, to: 8, fps: 4, loop: true },
+  ],
+  swarm_scatter: [{ key: 'swarm_scatter', from: 0, to: 3, fps: 8, loop: true }],
+  surface_shaft: [{ key: 'surface_shaft', from: 0, to: 3, fps: 1.2, loop: true }],
+  undercurrent2: [{ key: 'undercurrent2', from: 0, to: 7, fps: 11, loop: true }],
+  robot2: [{ key: 'robot2_idle', from: 0, to: 5, fps: 2.6, loop: true }],
+  spark2: [{ key: 'spark2_flicker', from: 0, to: 7, fps: 9, loop: true }],
+  growth: [
+    { key: 'growth_worms', from: 0, to: 2, fps: 3, loop: true },
+    { key: 'growth_anemone', from: 6, to: 8, fps: 2.4, loop: true },
+  ],
+  door2: [
+    { key: 'door2_detect', from: 1, to: 2, fps: 3, loop: true },
+    { key: 'door2_scan', from: 3, to: 5, fps: 3.5, loop: true },
+    { key: 'door2_unlock', from: 6, to: 7, fps: 4, loop: false },
+    { key: 'door2_open', from: 8, to: 9, fps: 3.5, loop: false },
+  ],
+  scan_beam: [{ key: 'scan_beam', from: 0, to: 5, fps: 12, loop: true }],
+  scan_hl: [{ key: 'scan_hl', from: 0, to: 2, fps: 8, loop: true }],
   keeper: [
     { key: 'keeper_dormant', from: 0, to: 0, fps: 6, loop: false },
     { key: 'keeper_waking', from: 1, to: 6, fps: 6, loop: false },
@@ -97,6 +120,24 @@ export class BootScene extends Phaser.Scene {
     sheet(this, 'env_spark', 'env_spark_junction_sheet', 32, 32);
     sheet(this, 'env_mech_door', 'env_mech_door_sheet', 96, 128);
     sheet(this, 'env_ceiling_cable', 'env_ceiling_cable_sheet', 32, 32);
+
+    // 第二批：开场精细化
+    this.load.image('bg_far', 'assets/bg_openwater_far.png');
+    this.load.image('bg_mid', 'assets/bg_openwater_mid.png');
+    this.load.image('fx_point_light', 'assets/fx_point_light.png');
+    sheet(this, 'swarm_far', 'swarm_distant_sheet', 12, 12);
+    sheet(this, 'swarm_scatter', 'swarm_scatter_sheet', 24, 24);
+    sheet(this, 'surface_shaft', 'fx_surface_shaft', 256, 270);
+    sheet(this, 'undercurrent2', 'fx_undercurrent_v2', 384, 216);
+    sheet(this, 'wreck', 'ruin_wreck_tileset', 16, 16);
+    sheet(this, 'contact_decals', 'ruin_contact_decals', 32, 32);
+    sheet(this, 'growth', 'ruin_growth_sheet', 32, 32);
+    sheet(this, 'robot2', 'env_fallen_robot_v2', 64, 48);
+    sheet(this, 'spark2', 'env_spark_junction_v2', 32, 32);
+    sheet(this, 'door2', 'env_mech_door_v2', 128, 160);
+    sheet(this, 'scan_beam', 'fx_scan_beam', 256, 32);
+    sheet(this, 'scan_hl', 'fx_scan_highlight', 48, 48);
+    this.load.image('dialogue_frame2', 'assets/ui_dialogue_frame_v2.png');
 
     this.load.json('manifest', 'assets/engine_manifest.json');
     this.load.image('cut1', 'assets/cutscene_01_separation.png');

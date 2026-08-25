@@ -102,3 +102,33 @@ export class AutoTiler {
     return { total, missing };
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * 残骸图块的 16 掩码自动拼接（只看四邻，不看对角）。
+ *
+ * 实测四个族里只有 open_truss 是真正的 16 个独立图块：
+ *   tilted_hull      只随 N/S 变化（4 种）—— 斜插的舱段只需要纵向连续
+ *   overturned_tank  只随 E/W 变化（4 种）—— 横躺的圆柱不该有"向上接"的样子
+ *   sunken_platform  只随 S 变化（2 种）
+ * 重复的掩码指向同一张图，查表照常работа，这里不需要特判。
+ */
+export type WreckFamily = 'tilted_hull' | 'open_truss' | 'overturned_tank' | 'sunken_platform';
+
+export const WRECK_FAMILY_INDEX: Record<WreckFamily, number> = {
+  tilted_hull: 0,
+  open_truss: 1,
+  overturned_tank: 2,
+  sunken_platform: 3,
+};
+
+/** N=1 E=2 S=4 W=8 */
+export function wreckFrame(
+  family: WreckFamily,
+  n: boolean, e: boolean, s: boolean, w: boolean,
+): number {
+  const mask = (n ? 1 : 0) | (e ? 2 : 0) | (s ? 4 : 0) | (w ? 8 : 0);
+  return WRECK_FAMILY_INDEX[family] * 16 + mask;
+}

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, DEFAULT_FLAGS, DEFAULT_TUNING, type Tuning } from '../config/tuning';
 import { Jellyfish, type JellyfishInput } from '../game/Jellyfish';
 import { Particles } from '../game/Particles';
-import { AutoTiler, type BlobTables } from '../game/AutoTiler';
+import { AutoTiler, wreckFrame, type BlobTables, type WreckFamily } from '../game/AutoTiler';
 import { Dialogue } from '../ui/Dialogue';
 import { audio } from '../audio/AudioSystem';
 import { FONT, SIZE } from '../ui/theme';
@@ -53,8 +53,12 @@ export class PrologueScene extends Phaser.Scene {
   private openLevel!: LevelData;
   private ruinLevel!: LevelData;
   private door?: Phaser.GameObjects.Sprite;
-  private undercurrentFx?: Phaser.GameObjects.TileSprite;
-  private undercurrentTimer?: Phaser.Time.TimerEvent;
+  private doorIsV2 = false;
+  private undercurrentFx?: Phaser.GameObjects.Sprite;
+  private parallax: { far?: Phaser.GameObjects.TileSprite; mid?: Phaser.GameObjects.TileSprite } = {};
+  private shaftFx?: Phaser.GameObjects.Sprite;
+  private farSwarm: Phaser.GameObjects.Sprite[] = [];
+  private scanHl?: Phaser.GameObjects.Sprite;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private prevPulse = false;
 
@@ -74,7 +78,10 @@ export class PrologueScene extends Phaser.Scene {
     this.prevPulse = false;
     this.door = undefined;
     this.undercurrentFx = undefined;
-    this.undercurrentTimer = undefined;
+    this.parallax = {};
+    this.shaftFx = undefined;
+    this.farSwarm = [];
+    this.scanHl = undefined;
     this.tuning = { ...DEFAULT_TUNING };
   }
 
@@ -90,6 +97,8 @@ export class PrologueScene extends Phaser.Scene {
     this.openBg = this.add.graphics().setDepth(0);
     this.openBg.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
     this.openBg.fillRect(0, 0, OPEN_W, OPEN_H);
+
+    this.buildParallax();
 
     this.buildSwarm();
 
@@ -117,6 +126,50 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   /* ---------------------------------------------------------------- */
+
+  /**
+   * 三层视差：远景 / 中景 / 主体。
+   *
+   * 之前只有一层纯渐变，主角游起来像在原地 —— 水里没有参照物，速度感
+   * 全靠粒子撑，撑不住。远景对比度实测标准差只有 2.5，正好：它的作用是
+   * 给速度感，不是给信息。
+   *
+   * scrollFactor 决定跟随相机的比例，越小越远。
+   */
+  private buildParallax(): void {
+    const { width, height } = this.scale;
+    const vw = width / this.cameras.main.zoom + 480;
+    const vh = height / this.cameras.main.zoom + 270;
+
+    if (this.textures.exists('bg_far')) {
+      this.parallax.far = this.add.tileSprite(0, 0, vw, vh, 'bg_far')
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(1);
+    }
+    if (this.textures.exists('bg_mid')) {
+      this.parallax.mid = this.add.tileSprite(0, 0, vw, vh, 'bg_mid')
+        .setOrigin(0, 0).setScrollFactor(0).setDepth(2).setAlpha(0.9);
+    }
+
+    // 海面光柱：全场唯一提示"上面有个更好的地方"的元素，
+    // 结局要回去的方向。开场埋下它，结局才有分量
+    if (this.textures.exists('surface_shaft')) {
+      this.shaftFx = this.add.sprite(OPEN_W * 0.38, 0, 'surface_shaft')
+        .setOrigin(0.5, 0).setDepth(3).setAlpha(0.5).setScrollFactor(0.35);
+      this.shaftFx.play('surface_shaft');
+    }
+
+    // 远景族群：比主体那层再小一档，只有轮廓，制造纵深
+    if (this.textures.exists('swarm_far')) {
+      for (let i = 0; i < 16; i++) {
+        const s = this.add.sprite(
+          Math.random() * OPEN_W, 150 + Math.random() * 600, 'swarm_far',
+        ).setDepth(3).setAlpha(0.4).setScrollFactor(0.45);
+        s.play(['swarm_far_a', 'swarm_far_b', 'swarm_far_c'][i % 3]);
+        s.anims.setProgress(Math.random());
+        this.farSwarm.push(s);
+      }
+    }
+  }
 
   private buildSwarm(): void {
     const hasSwarm = this.textures.exists('swarm');
@@ -180,11 +233,21 @@ export class PrologueScene extends Phaser.Scene {
 
     this.runPhase(dt);
 
-    if (this.undercurrentFx) {
-      const cam = this.cameras.main;
-      this.undercurrentFx.setPosition(cam.midPoint.x, cam.midPoint.y);
-      this.undercurrentFx.tilePositionX += 700 * dt;
+    const cam = this.cameras.main;
+    if (this.parallax.far) {
+      this.parallax.far.tilePositionX = cam.scrollX * 0.12;
+      this.parallax.far.tilePositionY = cam.scrollY * 0.08;
     }
+    if (this.parallax.mid) {
+      this.parallax.mid.tilePositionX = cam.scrollX * 0.34;
+      this.parallax.mid.tilePositionY = cam.scrollY * 0.22;
+    }
+    for (const s of this.farSwarm) s.x -= 6 * dt;
+
+    if (this.undercurrentFx) {
+      this.undercurrentFx.setPosition(cam.midPoint.x, cam.midPoint.y);
+    }
+    if (this.scanHl) this.scanHl.setPosition(this.jelly.x, this.jelly.y);
 
     this.particles.update(dt, this.cameras.main.worldView, this.time.now);
     audio.updateAmbient(dt);
@@ -284,17 +347,23 @@ export class PrologueScene extends Phaser.Scene {
     audio.hurt();
     this.cameras.main.flash(240, 11, 16, 38);
 
-    if (this.textures.exists('undercurrent')) {
+    // v2 比背景更暗（平均亮度 23.4，最亮色只占 0.2% 面积），
+    // 是一股把光吃掉的东西，而不是漂亮的水
+    const key = this.textures.exists('undercurrent2') ? 'undercurrent2' : 'undercurrent';
+    if (this.textures.exists(key)) {
       const cam = this.cameras.main;
-      this.undercurrentFx = this.add.tileSprite(
-        cam.midPoint.x, cam.midPoint.y, cam.width / cam.zoom + 640, 320, 'undercurrent',
-      ).setDepth(40).setAlpha(0);
-      this.tweens.add({ targets: this.undercurrentFx, alpha: 0.9, duration: 300 });
-      let f = 0;
-      this.undercurrentTimer = this.time.addEvent({
-        delay: 100, loop: true,
-        callback: () => this.undercurrentFx?.setFrame((f = (f + 1) % 6)),
-      });
+      this.undercurrentFx = this.add.sprite(cam.midPoint.x, cam.midPoint.y, key)
+        .setDepth(40).setAlpha(0).setScale(3);
+      this.undercurrentFx.play(key === 'undercurrent2' ? 'undercurrent2' : 'undercurrent');
+      this.tweens.add({ targets: this.undercurrentFx, alpha: 0.95, duration: 300 });
+    }
+
+    // 族群被冲散：换成受冲击的姿态，而不是原样平移出画
+    if (this.textures.exists('swarm_scatter')) {
+      for (const sp of this.swarm) {
+        sp.play('swarm_scatter');
+        sp.anims.setProgress(Math.random());
+      }
     }
 
     this.time.delayedCall(1300, () => this.cameras.main.fadeOut(700, 11, 16, 38));
@@ -309,7 +378,12 @@ export class PrologueScene extends Phaser.Scene {
     this.swarm = [];
     this.undercurrentFx?.destroy();
     this.undercurrentFx = undefined;
-    this.undercurrentTimer?.remove();
+    this.parallax.far?.destroy();
+    this.parallax.mid?.destroy();
+    this.parallax = {};
+    this.shaftFx?.destroy();
+    this.farSwarm.forEach((s) => s.destroy());
+    this.farSwarm = [];
     this.openBg.destroy();
 
     this.buildRuinField();
@@ -340,6 +414,7 @@ export class PrologueScene extends Phaser.Scene {
     bg.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
     bg.fillRect(0, 0, w, h);
 
+    // 海床岩层仍用正片那套 47 掩码图块，保持空间语言一致
     const manifest = this.cache.json.get('manifest') as { blob47: BlobTables } | undefined;
     const tilesMeta = this.cache.json.get('tiles-meta') as
       { frames: { filename: string }[] } | undefined;
@@ -347,7 +422,40 @@ export class PrologueScene extends Phaser.Scene {
       new AutoTiler(this.ruinLevel, manifest.blob47, tilesMeta).build(this, 'tiles').setDepth(1);
     }
 
+    // 金属残构改用残骸图块 —— 这些是沉船式的废弃物，不是完好的设施衬里。
+    // 四个族分段使用，四段场景才不会看起来是同一个地方
+    this.paintWrecks();
+
     const floor = this.floorTop();
+
+    // 接触过渡：沉积物堆积 + 接触阴影。物件直接坐在地面上是"粗糙"最直接的来源
+    if (this.textures.exists('contact_decals')) {
+      for (let gx = 2; gx < this.ruinLevel.width - 2; gx += 1) {
+        const gy = floor[gx];
+        if (gy <= 0) continue;
+        if (Math.random() < 0.45) {
+          this.add.sprite(gx * TILE + TILE / 2, gy * TILE, 'contact_decals',
+            Math.floor(Math.random() * 3))
+            .setOrigin(0.5, 0.5).setDepth(3).setAlpha(0.85);
+        }
+      }
+    }
+
+    // 附着生物：这片海之前是死的，除了主角什么活物都没有。
+    // 加上之后「死去的机械」和「活着的海」才形成对冲
+    if (this.textures.exists('growth')) {
+      for (let gx = 4; gx < this.ruinLevel.width - 4; gx += 2) {
+        const gy = floor[gx];
+        if (gy <= 0 || Math.random() > 0.4) continue;
+        const kind = Math.random();
+        const g = this.add.sprite(gx * TILE + TILE / 2, gy * TILE, 'growth')
+          .setOrigin(0.5, 1).setDepth(4);
+        if (kind < 0.45) g.play('growth_worms');
+        else if (kind < 0.75) g.play('growth_anemone');
+        else g.setFrame(12 + Math.floor(Math.random() * 3));
+        g.anims?.setProgress?.(Math.random());
+      }
+    }
 
     // 散落零件：只落在地面上
     if (this.textures.exists('env_debris')) {
@@ -365,25 +473,42 @@ export class PrologueScene extends Phaser.Scene {
       }
     }
 
-    // 倒地的机器人：放在玩家一定会经过的开阔地面上
-    if (this.textures.exists('env_fallen_robot')) {
+    // 倒地的机器人：和 Zone 1 里还在巡逻的是同一型号，
+    // 玩家在这里记住轮廓，后面遇到活的才会想「原来它们本来会动」
+    const robotKey = this.textures.exists('robot2') ? 'robot2' : 'env_fallen_robot';
+    if (this.textures.exists(robotKey)) {
       const gx = 37;
       const gy = floor[gx];
       if (gy > 0) {
-        this.add.sprite(gx * TILE, gy * TILE + 2, 'env_fallen_robot')
-          .setOrigin(0.5, 1).setDepth(5).play('robot_idle');
+        this.add.sprite(gx * TILE, gy * TILE + 2, robotKey)
+          .setOrigin(0.5, 1).setDepth(5)
+          .play(robotKey === 'robot2' ? 'robot2_idle' : 'robot_idle');
       }
     }
 
-    // 破损接头：坐在残构顶面上，火花才有来源 ——
-    // 纵坐标从该列的地面高度推出来，换了地形也不会飘在水里
-    if (this.textures.exists('env_spark')) {
+    // 破损接头 + 点光。之前火花不照亮任何东西，所以完全没有光感
+    const sparkKey = this.textures.exists('spark2') ? 'spark2' : 'env_spark';
+    if (this.textures.exists(sparkKey)) {
       for (const gx of [11, 24, 48, 59]) {
         const gy = floor[gx];
         if (gy <= 0) continue;
-        const s = this.add.sprite(gx * TILE + TILE / 2, gy * TILE - TILE / 2, 'env_spark')
-          .setDepth(5);
-        s.play('spark_flicker');
+        const px = gx * TILE + TILE / 2;
+        const py = gy * TILE - TILE / 2;
+
+        if (this.textures.exists('fx_point_light')) {
+          const glow = this.add.image(px, py, 'fx_point_light')
+            .setDepth(4).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD).setScale(1.1);
+          glow.setTint(0xffd700);
+          // 亮度跟着放电帧走，不是匀速呼吸 —— 火光是抖的
+          this.tweens.add({
+            targets: glow, alpha: 0.32,
+            duration: 90, yoyo: true, repeat: -1, repeatDelay: 520,
+            delay: Math.random() * 900,
+          });
+        }
+
+        const s = this.add.sprite(px, py, sparkKey).setDepth(5);
+        s.play(sparkKey === 'spark2' ? 'spark2_flicker' : 'spark_flicker');
         s.anims.setProgress(Math.random());
       }
     }
@@ -392,10 +517,57 @@ export class PrologueScene extends Phaser.Scene {
     const doorGx = Math.floor(this.doorX / TILE);
     const groundY = (floor[doorGx] > 0 ? floor[doorGx] : 16) * TILE;
     this.doorY = groundY - 64;
-    if (this.textures.exists('env_mech_door')) {
-      this.door = this.add.sprite(this.doorX + 40, this.doorY, 'env_mech_door').setDepth(6);
+    const doorKey = this.textures.exists('door2') ? 'door2' : 'env_mech_door';
+    if (this.textures.exists(doorKey)) {
+      this.door = this.add.sprite(this.doorX + 40, this.doorY, doorKey).setDepth(6);
       this.door.setFrame(0);
+      this.doorIsV2 = doorKey === 'door2';
+      if (this.doorIsV2) {
+        // 门一直在极缓慢地"察觉"，读取槽偶尔亮一下 —— 它醒着，只是没人来
+        this.time.delayedCall(1200, () => {
+          if (this.phase === 'explore' || this.phase === 'arrive') this.door?.play('door2_detect');
+        });
+      }
     }
+  }
+
+  /**
+   * 用残骸图块画金属残构。
+   *
+   * 按 x 分段轮换四个族，于是画面从左到右经过倾斜舱段 → 断裂桁架 →
+   * 翻倒储罐 → 沉降平台，四段场景不会看起来是同一个地方。
+   * 桁架那族是镂空的，画面因此有了可透视的层次。
+   */
+  private paintWrecks(): void {
+    if (!this.textures.exists('wreck')) return;
+
+    const families: WreckFamily[] = [
+      'tilted_hull', 'open_truss', 'overturned_tank', 'sunken_platform',
+    ];
+    const solid = (x: number, y: number): boolean => {
+      if (x < 0 || y < 0 || x >= this.ruinLevel.width || y >= this.ruinLevel.height) return false;
+      return this.ruinLevel.terrain[y][x] === 'metal';
+    };
+
+    const rt = this.add.renderTexture(
+      0, 0, this.ruinLevel.width * TILE, this.ruinLevel.height * TILE,
+    ).setOrigin(0, 0).setDepth(2);
+    const stamp = this.add.image(0, 0, 'wreck').setVisible(false).setOrigin(0, 0);
+
+    for (let y = 0; y < this.ruinLevel.height; y++) {
+      for (let x = 0; x < this.ruinLevel.width; x++) {
+        if (!solid(x, y)) continue;
+        const fam = families[Math.floor(x / 19) % families.length];
+        const frame = wreckFrame(
+          fam, solid(x, y - 1), solid(x + 1, y), solid(x, y + 1), solid(x - 1, y),
+        );
+        stamp.setFrame(frame);
+        // 残骸是 16px 的，图块格是 32px，按 2 倍整数放大铺满
+        stamp.setScale(2);
+        rt.draw(stamp, x * TILE, y * TILE);
+      }
+    }
+    stamp.destroy();
   }
 
   /** 每列最靠上的实心地面格，用来把物件摆在地上而不是浮在水里 */
@@ -422,18 +594,35 @@ export class PrologueScene extends Phaser.Scene {
     this.phase = 'scan';
     this.phaseTimer = 0;
 
-    this.door?.play('door_scan');
+    if (this.doorIsV2) this.door?.play('door2_scan');
+    else this.door?.play('door_scan');
     audio.relayOn();
 
-    // 蓝光从上往下扫过主角。用补间控制的亮带，比逐帧贴图更好调时长
-    const beam = this.add.rectangle(
-      this.jelly.x, this.doorY - 64, 210, 3, COLORS.biolum, 0.9,
-    ).setDepth(30);
+    // 被扫描时主角身上叠一层轮廓高光 —— 之前光扫过去主角毫无反应
+    if (this.textures.exists('scan_hl')) {
+      this.scanHl = this.add.sprite(this.jelly.x, this.jelly.y, 'scan_hl')
+        .setDepth(21).setBlendMode(Phaser.BlendModes.ADD);
+      this.scanHl.play('scan_hl');
+    }
+
+    // 蓝光从上往下扫过主角
+    const beam: Phaser.GameObjects.GameObject & { destroy(): void } =
+      this.textures.exists('scan_beam')
+        ? this.add.sprite(this.jelly.x, this.doorY - 64, 'scan_beam')
+            .setDepth(30).setBlendMode(Phaser.BlendModes.ADD)
+        : this.add.rectangle(this.jelly.x, this.doorY - 64, 210, 3, COLORS.biolum, 0.9)
+            .setDepth(30);
+    if (beam instanceof Phaser.GameObjects.Sprite) beam.play('scan_beam');
+
     this.tweens.add({
       targets: beam, y: this.doorY + 64, duration: 1500, ease: 'Sine.InOut',
-      onComplete: () => { beam.destroy(); this.toWelcome(); },
+      onComplete: () => {
+        beam.destroy();
+        this.scanHl?.destroy();
+        this.scanHl = undefined;
+        this.toWelcome();
+      },
     });
-    this.tweens.add({ targets: beam, alpha: 0.35, duration: 220, yoyo: true, repeat: 5 });
   }
 
   private toWelcome(): void {
@@ -452,7 +641,13 @@ export class PrologueScene extends Phaser.Scene {
   private toEnter(): void {
     this.phase = 'enter';
     this.phaseTimer = 0;
-    this.door?.play('door_open');
+    if (this.doorIsV2) {
+      // v2 多了解锁那一拍：锁扣先弹开，门板才滑动
+      this.door?.play('door2_unlock');
+      this.door?.once('animationcomplete', () => this.door?.play('door2_open'));
+    } else {
+      this.door?.play('door_open');
+    }
     audio.gateOpen();
 
     // 门开之后主角自己游进去 —— 这一下是结果，不是挑战
