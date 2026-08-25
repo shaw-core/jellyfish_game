@@ -27,6 +27,13 @@ export class TitleScene extends Phaser.Scene {
 
   init(data: { status: AssetStatus }): void {
     this.status = data.status;
+    // Phaser 复用 Scene 实例：create() 会重跑，但类字段初始化器只在构造时
+    // 执行过一次。不在这里清空的话，items 会累积上一轮已销毁的 Text，
+    // refresh() 对销毁对象调 setColor 会抛异常，整个标题场景当场废掉 ——
+    // 表现就是「按任意键返回没反应」（其实返回了，只是标题坏了）
+    this.items = [];
+    this.marker = undefined;
+    this.index = 0;
   }
 
   create(): void {
@@ -100,6 +107,8 @@ export class TitleScene extends Phaser.Scene {
 
   private refresh(): void {
     this.items.forEach((t, i) => {
+      // 防御：万一还是拿到了已销毁的对象，跳过而不是让整个场景崩掉
+      if (!t.scene) return;
       t.setColor(i === this.index ? '#70FFE0' : '#59636B');
     });
     const active = this.items[this.index];

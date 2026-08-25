@@ -71,6 +71,11 @@ export class PrologueScene extends Phaser.Scene {
     this.phase = 'swim';
     this.phaseTimer = 0;
     this.swarm = [];
+    this.prevPulse = false;
+    this.door = undefined;
+    this.undercurrentFx = undefined;
+    this.undercurrentTimer = undefined;
+    this.tuning = { ...DEFAULT_TUNING };
   }
 
   create(): void {

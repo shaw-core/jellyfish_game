@@ -44,6 +44,13 @@ export function continueGate(
   window.addEventListener('pointerup', onPointer);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup);
   scene.events.once(Phaser.Scenes.Events.DESTROY, cleanup);
+
+  // 兜底：即使输入层再出问题，画面上也始终有一块能点的区域
+  const hit = scene.add.zone(0, 0, scene.scale.width, scene.scale.height)
+    .setOrigin(0, 0).setScrollFactor(0).setDepth(9999)
+    .setInteractive({ useHandCursor: true });
+  hit.on('pointerup', fire);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hit.destroy());
 }
 
 /**

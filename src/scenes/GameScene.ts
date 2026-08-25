@@ -51,6 +51,22 @@ export class GameScene extends Phaser.Scene {
 
   init(data: { status: AssetStatus }): void {
     this.status = data.status;
+    // 必须显式清空：Scene 实例被复用，重玩一次这些数组会翻倍，
+    // 敌人成倍出现、继电器数量对不上导致闸门永远开不了
+    this.drones = [];
+    this.conduits = [];
+    this.vents = [];
+    this.relays = [];
+    this.won = false;
+    this.pointerAim = false;
+    this.prevPulseKey = false;
+    this.prevState = '';
+    this.prevAlerted = false;
+    this.sparkCooldown = 0;
+    this.lastCharge = 0;
+    this.checkpoint = { x: 0, y: 0 };
+    this.tuning = { ...DEFAULT_TUNING };
+    this.flags = { ...DEFAULT_FLAGS };
   }
 
   create(): void {

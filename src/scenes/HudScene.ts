@@ -13,6 +13,11 @@ export class HudScene extends Phaser.Scene {
     super('hud');
   }
 
+  init(): void {
+    // 同样的理由：HUD 是 launch 起来的，重进游戏会再跑一次 create
+    this.hearts = [];
+  }
+
   create(): void {
     for (let i = 0; i < 3; i++) {
       this.hearts.push(this.add.circle(20 + i * 16, 22, 5, COLORS.biolum));
