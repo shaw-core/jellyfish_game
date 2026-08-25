@@ -81,6 +81,20 @@ tools/fix_assets.py       美术资产自动修复 + 引擎清单生成
 
 **黑暗用 RenderTexture + erase，不用 mask。** 光源每帧都在动且数量不定，重建 mask 比重画一次贵。
 
+## 程序化环境资产
+
+`tools/gen_env_assets.py` 用 PIL 直接画像素图，输出散落零件、倒地的机器人、
+破损接头、机械门、沿顶线缆。全部锁在 36 色统一色板内、二值 Alpha，
+脚本自带色板与 Alpha 自检，不合规直接 assert 失败。
+
+```bash
+python tools/gen_env_assets.py --out public/assets
+```
+
+这么做不是为了省画师的工，是因为**这类资产必须和场景绑死**：零件要落在地面上、
+接头要贴在残构表面、线缆要按管廊走向接段。所以贴图里刻意不画"埋进沉积物"
+那一层 —— 埋多深是摆放时按地形算的，画死了就只能配一种地形。
+
 ## 美术资产批次
 
 `public/assets/` 里同时装着两批：

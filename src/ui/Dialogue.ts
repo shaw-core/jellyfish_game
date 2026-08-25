@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { advanceListener } from './continueGate';
 import { FONT, SIZE } from './theme';
 
 export interface Line {
@@ -36,8 +37,7 @@ export class Dialogue {
   private holdTimer = 0;
   private done = true;
   private onComplete?: () => void;
-  private onKeyUp!: () => void;
-  private onPointerUp!: () => void;
+  private disposeInput: () => void = () => {};
   private disposed = false;
 
   constructor(private scene: Phaser.Scene) {
@@ -69,11 +69,8 @@ export class Dialogue {
     this.container = scene.add.container(x, y, [this.box, this.nameText, this.bodyText, this.prompt]);
     this.container.setScrollFactor(0).setDepth(60).setVisible(false);
 
-    // 同样只认抬起事件：进入对白的那次按键不该顺手翻掉第一句
-    this.onKeyUp = () => this.advance();
-    this.onPointerUp = () => this.advance();
-    scene.input.keyboard?.on('keyup', this.onKeyUp);
-    scene.input.on('pointerup', this.onPointerUp);
+    // 走 DOM 监听而不是 Phaser 键盘插件，原因见 continueGate 的注释
+    this.disposeInput = advanceListener(() => this.advance());
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
@@ -163,8 +160,7 @@ export class Dialogue {
   destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.input.keyboard?.off('keyup', this.onKeyUp);
-    this.scene.input.off('pointerup', this.onPointerUp);
+    this.disposeInput();
     this.container.destroy();
   }
 }

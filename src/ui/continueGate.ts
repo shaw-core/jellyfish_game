@@ -3,58 +3,68 @@ import Phaser from 'phaser';
 /**
  * 「按任意键继续」的通用闸门。
  *
- * 之前每个场景各写各的，用 `delayedCall` 里注册 `once('keydown')`，
- * 结果三个坑同时踩：
+ * 不走 Phaser 的 KeyboardPlugin。原因在它的源码里：事件队列是全局共享的
+ * （`this.manager.queue`），每个场景的插件在各自的 update 里处理同一份队列。
+ * 于是 `scene.start()` 在按键回调里执行时，新场景刚注册的监听器会在同一帧
+ * 撞上那个还没被清掉的事件，把「继续」立刻消耗掉 —— 表现就是按任意键没反应。
  *
- * 1. 进入本场景的那次按键还没抬起，键盘重复会立刻触发返回
- * 2. `pointerdown` 和上一场景的点击是同一次交互，同样会被吃掉
- * 3. `once` 被误触发消耗掉之后，再按就彻底没反应了 —— 这就是
- *    「按任意键返回没有用」的直接原因
- *
- * 这里的做法：
- * - 用 `on` 而不是 `once`，自己拿 fired 标志去重，误触发不会耗尽监听
- * - 只认 `keyup` 与 `pointerup`：抬起事件一定属于本场景的新交互
- * - 额外加一个最短停留时间，防止连点穿透
- * - 场景 shutdown 时统一注销，不给下个场景留野监听
+ * 换成 keyup 只是把时机挪了一点，队列共享的问题还在。所以这里直接挂 DOM 监听：
+ * 时序完全由我们自己控制，且与场景生命周期严格对齐。
  */
 export function continueGate(
   scene: Phaser.Scene,
   onContinue: () => void,
-  minDwellMs = 350,
+  minDwellMs = 400,
 ): void {
-  const armedAt = scene.time.now + minDwellMs;
+  const armedAt = performance.now() + minDwellMs;
   let fired = false;
 
   const fire = (): void => {
-    if (fired || scene.time.now < armedAt) return;
+    if (fired || performance.now() < armedAt) return;
     fired = true;
     cleanup();
     onContinue();
   };
 
-  const kb = scene.input.keyboard;
-  const onKeyUp = (): void => fire();
-  const onPointerUp = (): void => fire();
+  const onKey = (e: KeyboardEvent): void => {
+    // 修饰键单独按下不算「任意键」
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+    fire();
+  };
+  const onPointer = (): void => fire();
 
   const cleanup = (): void => {
-    kb?.off('keyup', onKeyUp);
-    scene.input.off('pointerup', onPointerUp);
+    window.removeEventListener('keyup', onKey);
+    window.removeEventListener('pointerup', onPointer);
     scene.events.off(Phaser.Scenes.Events.SHUTDOWN, cleanup);
+    scene.events.off(Phaser.Scenes.Events.DESTROY, cleanup);
   };
 
-  kb?.on('keyup', onKeyUp);
-  scene.input.on('pointerup', onPointerUp);
+  window.addEventListener('keyup', onKey);
+  window.addEventListener('pointerup', onPointer);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup);
+  scene.events.once(Phaser.Scenes.Events.DESTROY, cleanup);
 }
 
 /**
- * 场景级监听的统一注销。
- *
- * Phaser 会在 shutdown 时清掉 scene.input 上的监听，但 `addKey` 建出来的
- * Key 对象、以及挂在 scene.events 上的跨场景监听不会自动断开。
- * 场景反复进出时这些会累积，表现就是"按一次触发两次"。
+ * 「推进一句对白」用的监听，同样走 DOM。
+ * 返回注销函数，由调用方在销毁时执行。
  */
-export function autoCleanup(scene: Phaser.Scene, dispose: () => void): void {
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, dispose);
-  scene.events.once(Phaser.Scenes.Events.DESTROY, dispose);
+export function advanceListener(onAdvance: () => void): () => void {
+  const armedAt = performance.now() + 250;
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+    if (performance.now() < armedAt) return;
+    onAdvance();
+  };
+  const onPointer = (): void => {
+    if (performance.now() < armedAt) return;
+    onAdvance();
+  };
+  window.addEventListener('keyup', onKey);
+  window.addEventListener('pointerup', onPointer);
+  return () => {
+    window.removeEventListener('keyup', onKey);
+    window.removeEventListener('pointerup', onPointer);
+  };
 }

@@ -38,6 +38,12 @@ export const OPENING_TAGS: Record<string, { key: string; from: number; to: numbe
     { key: 'debris_release', from: 1, to: 2, fps: 6, loop: false },
   ],
   undercurrent: [{ key: 'undercurrent', from: 0, to: 5, fps: 10, loop: true }],
+  env_fallen_robot: [{ key: 'robot_idle', from: 0, to: 3, fps: 3, loop: true }],
+  env_spark: [{ key: 'spark_flicker', from: 0, to: 5, fps: 9, loop: true }],
+  env_mech_door: [
+    { key: 'door_scan', from: 1, to: 2, fps: 2.4, loop: true },
+    { key: 'door_open', from: 3, to: 5, fps: 4, loop: false },
+  ],
   keeper: [
     { key: 'keeper_dormant', from: 0, to: 0, fps: 6, loop: false },
     { key: 'keeper_waking', from: 1, to: 6, fps: 6, loop: false },
@@ -84,6 +90,13 @@ export class BootScene extends Phaser.Scene {
     sheet(this, 'keeper', 'terminal_keeper_sheet', 48, 64);
     sheet(this, 'glyphwall', 'glyph_wall_sheet', 128, 96);
     sheet(this, 'glyphs', 'ancient_glyphs_sheet', 16, 16);
+
+    // 程序化环境资产（tools/gen_env_assets.py 生成）
+    sheet(this, 'env_debris', 'env_debris_sheet', 32, 32);
+    sheet(this, 'env_fallen_robot', 'env_fallen_robot_sheet', 64, 48);
+    sheet(this, 'env_spark', 'env_spark_junction_sheet', 32, 32);
+    sheet(this, 'env_mech_door', 'env_mech_door_sheet', 96, 128);
+    sheet(this, 'env_ceiling_cable', 'env_ceiling_cable_sheet', 32, 32);
 
     this.load.json('manifest', 'assets/engine_manifest.json');
     this.load.image('cut1', 'assets/cutscene_01_separation.png');

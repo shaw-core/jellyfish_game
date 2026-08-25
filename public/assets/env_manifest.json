@@ -1,0 +1,88 @@
+{
+  "env_debris_sheet": {
+    "file": "env_debris_sheet.png",
+    "frame_size": [
+      32,
+      32
+    ],
+    "frames": 6,
+    "cols": 6,
+    "variants": 6
+  },
+  "env_fallen_robot_sheet": {
+    "file": "env_fallen_robot_sheet.png",
+    "frame_size": [
+      64,
+      48
+    ],
+    "frames": 4,
+    "cols": 4,
+    "tags": {
+      "idle": [
+        0,
+        3
+      ]
+    },
+    "fps": 3
+  },
+  "env_spark_junction_sheet": {
+    "file": "env_spark_junction_sheet.png",
+    "frame_size": [
+      32,
+      32
+    ],
+    "frames": 6,
+    "cols": 6,
+    "tags": {
+      "flicker": [
+        0,
+        5
+      ]
+    },
+    "fps": 9,
+    "damage_frames": [
+      3,
+      4,
+      5
+    ]
+  },
+  "env_mech_door_sheet": {
+    "file": "env_mech_door_sheet.png",
+    "frame_size": [
+      96,
+      128
+    ],
+    "frames": 6,
+    "cols": 6,
+    "tags": {
+      "closed": [
+        0,
+        0
+      ],
+      "scan": [
+        1,
+        2
+      ],
+      "open": [
+        3,
+        5
+      ]
+    },
+    "fps": 5
+  },
+  "env_ceiling_cable_sheet": {
+    "file": "env_ceiling_cable_sheet.png",
+    "frame_size": [
+      32,
+      32
+    ],
+    "frames": 4,
+    "cols": 4,
+    "parts": [
+      "run",
+      "cap_left",
+      "cap_right",
+      "torn"
+    ]
+  }
+}
