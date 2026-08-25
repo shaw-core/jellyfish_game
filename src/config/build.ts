@@ -8,7 +8,7 @@
  * 现在标题画面右下角会显示这个版本号。对不上就说明部署的不是这一版，
  * 先查部署，不用争论功能改没改。
  */
-export const BUILD_ID = 'b04-locomotion';
+export const BUILD_ID = 'b06-jelly-v3';
 export const BUILD_FEATURES = [
   '主角运动全集（关闭程序变形）',
   '锥形探照灯扫描',

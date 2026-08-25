@@ -41,13 +41,32 @@ export class Jellyfish {
   private stateTimer = 0;
   currentAnim = '';
 
-  /** 是否拿到了第三批的运动全集 —— 有的话就彻底关掉程序变形 */
+  /** 是否拿到了成套的运动动画 —— 有的话就彻底关掉程序变形 */
   private readonly hasLocomotion: boolean;
+  private readonly locoKey: string;
+  private readonly animPrefix: string;
+  /** 运动图集的单帧边长，用来推碰撞半径 */
+  private frameSize = 64;
+
+  /** 碰撞半径按帧尺寸缩放：64 帧配 14，96 帧配 21 */
+  get radiusScale(): number {
+    return this.hasLocomotion ? this.frameSize / 64 : 1;
+  }
 
   constructor(private scene: Phaser.Scene, x: number, y: number, private hasAnims: boolean) {
-    this.hasLocomotion = scene.textures.exists('jelly2');
-    const key = this.hasLocomotion ? 'jelly2' : (hasAnims ? 'jelly' : 'jelly-placeholder');
+    // 优先用最新一代运动全集。尺寸不写死 —— 从贴图帧宽反推，
+    // 换成 96×96 的版本时不用改任何常数
+    this.locoKey = scene.textures.exists('jelly3') ? 'jelly3'
+      : scene.textures.exists('jelly2') ? 'jelly2' : '';
+    this.hasLocomotion = this.locoKey !== '';
+    const key = this.hasLocomotion ? this.locoKey : (hasAnims ? 'jelly' : 'jelly-placeholder');
     this.sprite = scene.add.sprite(x, y, key);
+    this.animPrefix = this.locoKey === 'jelly3' ? 'j3' : 'j2';
+
+    if (this.hasLocomotion) {
+      const src = scene.textures.get(this.locoKey).get(0);
+      this.frameSize = src ? src.width : 64;
+    }
     this.sprite.setOrigin(0.5, 0.5);
     this.sprite.setDepth(20);
   }
@@ -146,7 +165,7 @@ export class Jellyfish {
   /** 圆 vs 图块网格，逐轴分离，避免斜向卡角 */
   private resolveCollision(t: Tuning, level: LevelData): void {
     this.bumpStrength = 0;
-    const r = t.bodyRadius;
+    const r = t.bodyRadius * this.radiusScale;
     const solid = (px: number, py: number): boolean => {
       const cx = Math.floor(px / TILE);
       const cy = Math.floor(py / TILE);
@@ -243,13 +262,14 @@ export class Jellyfish {
     this.sprite.setScale(1, 1);
     this.sprite.rotation = this.facing + Math.PI / 2;
 
+    const P = this.animPrefix;
     if (this.pulsing) {
-      this.playAnim('j2_pulse');
+      this.playAnim(`${P}_pulse`);
     } else if (this.state === 'charge') {
       // 手动定帧，不走播放器
-      if (this.currentAnim !== 'j2_charge') {
-        this.currentAnim = 'j2_charge';
-        this.sprite.anims.play('j2_charge', true);
+      if (this.currentAnim !== `${P}_charge`) {
+        this.currentAnim = `${P}_charge`;
+        this.sprite.anims.play(`${P}_charge`, true);
       }
       this.sprite.anims.pause();
       const anim = this.sprite.anims.currentAnim;
@@ -262,10 +282,10 @@ export class Jellyfish {
       }
     } else {
       const map: Record<SwimState, string> = {
-        idle: 'j2_idle', charge: 'j2_charge', thrust: 'j2_thrust',
-        recover: 'j2_recover', glide: 'j2_glide',
+        idle: `${P}_idle`, charge: `${P}_charge`, thrust: `${P}_thrust`,
+        recover: `${P}_recover`, glide: `${P}_glide`,
       };
-      if (this.currentAnim === 'j2_charge') this.sprite.anims.resume();
+      if (this.currentAnim === `${P}_charge`) this.sprite.anims.resume();
       this.playAnim(map[this.state]);
     }
 
@@ -289,15 +309,19 @@ export class Jellyfish {
     this.health -= 1;
     this.invuln = t.invulnTime;
     // 受伤有专门的帧，不再只靠 alpha 闪烁
-    if (this.scene.textures.exists('jelly_dmg')) {
-      this.overlayOneShot('jelly_dmg', 'j2_hurt');
+    const dmg = this.scene.textures.exists('jelly_dmg3') ? 'jelly_dmg3' : 'jelly_dmg';
+    if (this.scene.textures.exists(dmg)) {
+      this.overlayOneShot(dmg, `${this.animPrefix}_hurt`);
     }
     return true;
   }
 
   /** 重生：从暗到亮重新点亮 */
   playRespawn(): void {
-    if (this.scene.textures.exists('jelly_dmg')) this.overlayOneShot('jelly_dmg', 'j2_respawn');
+    const dmg = this.scene.textures.exists('jelly_dmg3') ? 'jelly_dmg3' : 'jelly_dmg';
+    if (this.scene.textures.exists(dmg)) {
+      this.overlayOneShot(dmg, `${this.animPrefix}_respawn`);
+    }
   }
 
   /**

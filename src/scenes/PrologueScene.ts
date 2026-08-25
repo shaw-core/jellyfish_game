@@ -194,15 +194,21 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private buildSwarm(): void {
-    const hasSwarm = this.textures.exists('swarm');
-    const variants = ['swarm_a', 'swarm_b', 'swarm_c'];
+    // 族群跟着主角一起换代 —— 主角是 96px 写实造型，族群还留在旧的
+    // 24px 剪影上会明显不是同一个物种
+    const v2 = this.textures.exists('swarm2');
+    const swarmKey = v2 ? 'swarm2' : 'swarm';
+    const hasSwarm = this.textures.exists(swarmKey);
+    const variants = v2
+      ? ['swarm2_a', 'swarm2_b', 'swarm2_c']
+      : ['swarm_a', 'swarm_b', 'swarm_c'];
     const fallback = this.status.jelly ? 'jelly' : 'jelly-placeholder';
 
     for (let i = 0; i < 22; i++) {
       const s = this.add.sprite(
         260 + Math.random() * 1300,
         200 + Math.random() * 560,
-        hasSwarm ? 'swarm' : fallback,
+        hasSwarm ? swarmKey : fallback,
       ).setDepth(6).setAlpha(0.5 + Math.random() * 0.35);
 
       if (hasSwarm) {

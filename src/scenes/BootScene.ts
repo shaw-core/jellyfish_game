@@ -87,6 +87,24 @@ export const OPENING_TAGS: Record<string, { key: string; from: number; to: numbe
     { key: 'j2_hurt', from: 0, to: 3, fps: 10, loop: false },
     { key: 'j2_respawn', from: 4, to: 8, fps: 8, loop: false },
   ],
+  jelly3: [
+    { key: 'j3_idle', from: 0, to: 7, fps: 6.25, loop: true },
+    { key: 'j3_charge', from: 8, to: 17, fps: 12, loop: false },
+    { key: 'j3_thrust', from: 18, to: 25, fps: 14, loop: false },
+    { key: 'j3_glide', from: 26, to: 33, fps: 8.3, loop: true },
+    { key: 'j3_recover', from: 34, to: 37, fps: 10, loop: false },
+    { key: 'j3_pulse', from: 38, to: 41, fps: 10, loop: false },
+  ],
+  jelly_dmg3: [
+    { key: 'j3_hurt', from: 0, to: 3, fps: 10, loop: false },
+    { key: 'j3_respawn', from: 4, to: 8, fps: 8, loop: false },
+  ],
+  // 族群同步换新造型，否则主角换了之后族群明显不搭
+  swarm2: [
+    { key: 'swarm2_a', from: 0, to: 3, fps: 5.6, loop: true },
+    { key: 'swarm2_b', from: 4, to: 7, fps: 5.6, loop: true },
+    { key: 'swarm2_c', from: 8, to: 11, fps: 5.6, loop: true },
+  ],
   scan_lamp: [
     { key: 'lamp_scan', from: 1, to: 4, fps: 4, loop: true },
     { key: 'lamp_lock', from: 5, to: 5, fps: 4, loop: false },
@@ -178,6 +196,10 @@ export class BootScene extends Phaser.Scene {
 
     // 第三批：主角运动全集 + 细化
     sheet(this, 'jelly2', 'jellyfish_locomotion_v2', 64, 64);
+    // 第四批：96×96 写实版。到货后自动优先启用，无需改代码
+    sheet(this, 'jelly3', 'jellyfish_locomotion_v3', 96, 96);
+    sheet(this, 'jelly_dmg3', 'jellyfish_damage_v3', 96, 96);
+    sheet(this, 'swarm2', 'jellyfish_swarm_v2', 32, 32);
     sheet(this, 'jelly_dmg', 'jellyfish_damage_v2', 64, 64);
     sheet(this, 'scan_lamp', 'door_scan_lamp', 48, 32);
     this.load.image('cone_beam', 'assets/fx_cone_beam.png');
