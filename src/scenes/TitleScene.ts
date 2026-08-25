@@ -5,6 +5,7 @@ import { audio } from '../audio/AudioSystem';
 import type { AssetStatus } from './BootScene';
 import { FONT, SIZE } from '../ui/theme';
 import { continueGate } from '../ui/continueGate';
+import { BUILD_ID } from '../config/build';
 
 
 /**
@@ -86,6 +87,11 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(width / 2, height - 24, '↑ ↓ 选择    Enter / 点击 确认', {
       ...FONT, fontSize: SIZE.small, color: '#25355F',
     }).setOrigin(0.5);
+
+    // 构建标记：用来确认部署的到底是不是这一版
+    this.add.text(width - 8, height - 8, BUILD_ID, {
+      ...FONT, fontSize: SIZE.small, color: '#25355F',
+    }).setOrigin(1, 1);
 
     const kb = this.input.keyboard!;
     kb.on('keydown-UP', () => { this.index = (this.index + 2) % 3; this.refresh(); });

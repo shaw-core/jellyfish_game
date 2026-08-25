@@ -16,6 +16,8 @@ export interface AssetStatus {
   cutscenes: boolean;
   /** 第一批开场资产是否齐备 */
   opening: boolean;
+  /** 第三批主角运动全集是否可用 —— 决定要不要走程序变形 */
+  locomotion: boolean;
 }
 
 /** 各 Tag 是否循环 */
@@ -72,6 +74,36 @@ export const OPENING_TAGS: Record<string, { key: string; from: number; to: numbe
   ],
   scan_beam: [{ key: 'scan_beam', from: 0, to: 5, fps: 12, loop: true }],
   scan_hl: [{ key: 'scan_hl', from: 0, to: 2, fps: 8, loop: true }],
+  // 第三批
+  jelly2: [
+    { key: 'j2_idle', from: 0, to: 7, fps: 6.25, loop: true },
+    { key: 'j2_charge', from: 8, to: 17, fps: 12, loop: false },
+    { key: 'j2_thrust', from: 18, to: 25, fps: 14, loop: false },
+    { key: 'j2_glide', from: 26, to: 33, fps: 8.3, loop: true },
+    { key: 'j2_recover', from: 34, to: 37, fps: 10, loop: false },
+    { key: 'j2_pulse', from: 38, to: 41, fps: 10, loop: false },
+  ],
+  jelly_dmg: [
+    { key: 'j2_hurt', from: 0, to: 3, fps: 10, loop: false },
+    { key: 'j2_respawn', from: 4, to: 8, fps: 8, loop: false },
+  ],
+  scan_lamp: [
+    { key: 'lamp_scan', from: 1, to: 4, fps: 4, loop: true },
+    { key: 'lamp_lock', from: 5, to: 5, fps: 4, loop: false },
+  ],
+  scan_hl2: [{ key: 'scan_hl2', from: 0, to: 3, fps: 9, loop: true }],
+  growth2: [
+    { key: 'g2_worm_1', from: 0, to: 3, fps: 4, loop: true },
+    { key: 'g2_worm_2', from: 4, to: 7, fps: 4, loop: true },
+    { key: 'g2_worm_3', from: 8, to: 11, fps: 4, loop: true },
+    { key: 'g2_anemone_1', from: 12, to: 16, fps: 3, loop: true },
+    { key: 'g2_anemone_2', from: 17, to: 21, fps: 3, loop: true },
+  ],
+  snow: [
+    { key: 'snow_1', from: 0, to: 3, fps: 3, loop: true },
+    { key: 'snow_2', from: 4, to: 7, fps: 3, loop: true },
+    { key: 'snow_3', from: 8, to: 11, fps: 3, loop: true },
+  ],
   keeper: [
     { key: 'keeper_dormant', from: 0, to: 0, fps: 6, loop: false },
     { key: 'keeper_waking', from: 1, to: 6, fps: 6, loop: false },
@@ -144,6 +176,19 @@ export class BootScene extends Phaser.Scene {
     sheet(this, 'scan_hl', 'fx_scan_highlight', 48, 48);
     this.load.image('dialogue_frame2', 'assets/ui_dialogue_frame_v2.png');
 
+    // 第三批：主角运动全集 + 细化
+    sheet(this, 'jelly2', 'jellyfish_locomotion_v2', 64, 64);
+    sheet(this, 'jelly_dmg', 'jellyfish_damage_v2', 64, 64);
+    sheet(this, 'scan_lamp', 'door_scan_lamp', 48, 32);
+    this.load.image('cone_beam', 'assets/fx_cone_beam.png');
+    sheet(this, 'scan_hl2', 'fx_scan_highlight_v2', 64, 64);
+    sheet(this, 'growth2', 'ruin_growth_v2', 32, 32);
+    sheet(this, 'wreck2', 'ruin_wreck_tileset_v2', 16, 16);
+    sheet(this, 'floor_decals', 'seabed_floor_decals', 32, 32);
+    sheet(this, 'snow', 'fx_marine_snow_sheet', 16, 16);
+    sheet(this, 'cable2', 'ceiling_cable_tiles', 32, 32);
+    this.load.image('pump_machine', 'assets/zone1_pump_machine.png');
+
     this.load.json('manifest', 'assets/engine_manifest.json');
     this.load.image('cut1', 'assets/cutscene_01_separation.png');
     this.load.image('cut2', 'assets/cutscene_02_reunion.png');
@@ -159,6 +204,7 @@ export class BootScene extends Phaser.Scene {
       gate: this.ok('gate'),
       vent: this.ok('vent'),
       cutscenes: this.textures.exists('cut1') && this.textures.exists('cut2'),
+      locomotion: this.textures.exists('jelly2'),
       opening: ['title_logo', 'swarm', 'juvenile', 'keeper', 'glyphwall'].every(
         (k) => this.textures.exists(k),
       ),
