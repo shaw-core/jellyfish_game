@@ -54,6 +54,13 @@ export class PrologueScene extends Phaser.Scene {
   private ruinLevel!: LevelData;
   private door?: Phaser.GameObjects.Sprite;
   private doorIsV2 = false;
+  private arrived = false;
+  private stall = '';
+  private diag?: Phaser.GameObjects.Text;
+  private scanCone?: Phaser.GameObjects.Graphics;
+  private scanOrigin = { x: 0, y: 0 };
+  private scanAngle = { v: 0 };
+  private scanHit = false;
   private undercurrentFx?: Phaser.GameObjects.Sprite;
   private parallax: { far?: Phaser.GameObjects.TileSprite; mid?: Phaser.GameObjects.TileSprite } = {};
   private shaftFx?: Phaser.GameObjects.Sprite;
@@ -82,6 +89,12 @@ export class PrologueScene extends Phaser.Scene {
     this.shaftFx = undefined;
     this.farSwarm = [];
     this.scanHl = undefined;
+    this.doorIsV2 = false;
+    this.doorY = 10 * TILE;
+    this.arrived = false;
+    this.scanCone = undefined;
+    this.scanHit = false;
+    this.stall = '';
     this.tuning = { ...DEFAULT_TUNING };
   }
 
@@ -123,6 +136,11 @@ export class PrologueScene extends Phaser.Scene {
     kb.on('keydown-ESC', () => this.toGame());
 
     this.setHint('按住空格蓄力，松开喷射 —— 跟上族群');
+
+    // 诊断条：正常时不显示，某一段超时才浮出来。
+    // 同类静默故障已经出现四次，每次都得靠猜，这次让它自己说
+    this.diag = this.add.text(8, 8, '', { ...FONT, fontSize: SIZE.small, color: '#FF3344' })
+      .setScrollFactor(0).setDepth(90).setAlpha(0);
   }
 
   /* ---------------------------------------------------------------- */
@@ -248,7 +266,7 @@ export class PrologueScene extends Phaser.Scene {
     if (this.undercurrentFx) {
       this.undercurrentFx.setPosition(cam.midPoint.x, cam.midPoint.y);
     }
-    if (this.scanHl) this.scanHl.setPosition(this.jelly.x, this.jelly.y);
+    if (this.phase === 'scan') this.drawScanCone();
 
     this.particles.update(dt, this.cameras.main.worldView, this.time.now);
     audio.updateAmbient(dt);
@@ -265,7 +283,7 @@ export class PrologueScene extends Phaser.Scene {
       sweep: [4, () => this.toArrive()],
       arrive: [8, () => { this.phase = 'explore'; this.phaseTimer = 0; this.setHint('往深处游'); }],
       approach: [6, () => this.toScan()],
-      scan: [8, () => this.toWelcome()],
+      scan: [9, () => this.toWelcome()],
       welcome: [16, () => this.toEnter()],
       enter: [12, () => this.toGame()],
     };
@@ -273,6 +291,9 @@ export class PrologueScene extends Phaser.Scene {
     if (!entry) return;
     if (this.phaseTimer > entry[0]) {
       console.warn(`[prologue] 阶段 ${this.phase} 超时，强制推进`);
+      this.stall = `阶段 ${this.phase} 超时已强制推进（${entry[0]}s）`;
+      this.diag?.setText(this.stall).setAlpha(1);
+      this.time.delayedCall(4000, () => this.diag?.setAlpha(0));
       entry[1]();
     }
   }
@@ -344,6 +365,7 @@ export class PrologueScene extends Phaser.Scene {
         this.jelly.velocity.x += 520 * dt;
         this.jelly.velocity.y += 180 * dt;
         if (this.phaseTimer < 1.2) this.cameras.main.shake(80, 0.003);
+        if (this.phaseTimer > 1.9) this.toArrive();
         break;
 
       case 'arrive':
@@ -360,15 +382,18 @@ export class PrologueScene extends Phaser.Scene {
         break;
 
       case 'approach': {
-        const tx = this.doorX - 110;
+        // 停在门前一段距离、略低于灯源 —— 锥形从上往下摆过来必然覆盖到
+        const tx = this.doorX - 150;
+        const ty = this.doorY + 40;
         this.jelly.velocity.x += (tx - this.jelly.x) * 1.6 * dt;
-        this.jelly.velocity.y += (this.doorY + 10 - this.jelly.y) * 1.6 * dt;
+        this.jelly.velocity.y += (ty - this.jelly.y) * 1.6 * dt;
         if (this.phaseTimer > 1.6) this.toScan();
         break;
       }
 
       case 'scan':
-        this.jelly.velocity.scale(1 - 3 * dt);
+        // 扫描期间主角悬停不动，否则锥形跟着它跑，"被照到"就没有张力了
+        this.jelly.velocity.scale(1 - 4 * dt);
         break;
 
       case 'welcome':
@@ -405,20 +430,16 @@ export class PrologueScene extends Phaser.Scene {
       }
     }
 
-    // 由淡出完成事件驱动切场，不要用定时器和 fadeOut 赛跑 ——
-    // fadeIn 撞上未结束的 fadeOut 会留下一块黑屏
-    this.time.delayedCall(1200, () => {
-      this.cameras.main.once(
-        Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
-        () => this.toArrive(),
-      );
-      this.cameras.main.fadeOut(700, 11, 16, 38);
-    });
+    // 推进只靠 runPhase 里的计时，不挂相机事件 —— 事件在场景重启后
+    // 是否还能如期送达，取决于一堆我们控制不了的内部状态。
+    // 淡出只负责画面，不负责流程。
+    this.time.delayedCall(1100, () => this.cameras.main.fadeOut(700, 11, 16, 38));
   }
 
   /** 落进废墟：只换场景内容，不换 Scene，主角的物理状态保持连续 */
   private toArrive(): void {
-    if (this.phase !== 'sweep') return;   // 幂等：看门狗和淡出事件可能都触发
+    if (this.arrived) return;            // 幂等：计时与看门狗都可能触发
+    this.arrived = true;
     this.phase = 'arrive';
     this.phaseTimer = 0;
 
@@ -658,36 +679,82 @@ export class PrologueScene extends Phaser.Scene {
     else this.door?.play('door_scan');
     audio.relayOn();
 
-    // 被扫描时主角身上叠一层轮廓高光 —— 之前光扫过去主角毫无反应
-    if (this.textures.exists('scan_hl')) {
-      this.scanHl = this.add.sprite(this.jelly.x, this.jelly.y, 'scan_hl')
-        .setDepth(21).setBlendMode(Phaser.BlendModes.ADD);
-      this.scanHl.play('scan_hl');
-    }
-
-    // 蓝光从上往下扫过主角
-    const beam: Phaser.GameObjects.GameObject & { destroy(): void } =
-      this.textures.exists('scan_beam')
-        ? this.add.sprite(this.jelly.x, this.doorY - 64, 'scan_beam')
-            .setDepth(30).setBlendMode(Phaser.BlendModes.ADD)
-        : this.add.rectangle(this.jelly.x, this.doorY - 64, 210, 3, COLORS.biolum, 0.9)
-            .setDepth(30);
-    if (beam instanceof Phaser.GameObjects.Sprite) beam.play('scan_beam');
+    // 探照灯从门上的读取槽射出，绕着灯源摆动，扫过整片水域。
+    // 之前是一条平移的横带，主角只要不在那条线上就完全不会被扫到 ——
+    // 锥形从灯源发散，摆过去一定覆盖得到。
+    this.scanCone = this.add.graphics().setDepth(28).setBlendMode(Phaser.BlendModes.ADD);
+    this.scanOrigin = { x: this.doorX + 40, y: this.doorY - 44 };
+    this.scanAngle = { v: Math.PI * 0.78 };
 
     this.tweens.add({
-      targets: beam, y: this.doorY + 64, duration: 1500, ease: 'Sine.InOut',
-      onComplete: () => {
-        beam.destroy();
-        this.scanHl?.destroy();
-        this.scanHl = undefined;
-        this.toWelcome();
-      },
+      targets: this.scanAngle,
+      v: Math.PI * 1.22,
+      duration: 2600,
+      ease: 'Sine.InOut',
+      yoyo: true,
+      onComplete: () => this.toWelcome(),
     });
+
+    if (this.textures.exists('scan_hl')) {
+      this.scanHl = this.add.sprite(this.jelly.x, this.jelly.y, 'scan_hl')
+        .setDepth(21).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+      this.scanHl.play('scan_hl');
+    }
+  }
+
+  /** 每帧重画探照灯，并判断主角是否被照到 */
+  private drawScanCone(): void {
+    const g = this.scanCone;
+    if (!g) return;
+    g.clear();
+
+    const o = this.scanOrigin;
+    const a = this.scanAngle.v;
+    const half = 0.16;
+    const len = 620;
+
+    // 三层由内到外递减，做出体积感；用低 alpha 叠加而不是实心色
+    for (const [spread, alpha] of [[half * 0.45, 0.16], [half * 0.75, 0.09], [half, 0.05]]) {
+      g.fillStyle(0x70ffe0, alpha);
+      g.beginPath();
+      g.moveTo(o.x, o.y);
+      for (let t = -1; t <= 1.001; t += 0.125) {
+        g.lineTo(o.x + Math.cos(a + spread * t) * len, o.y + Math.sin(a + spread * t) * len);
+      }
+      g.closePath();
+      g.fillPath();
+    }
+
+    // 灯源本身
+    g.fillStyle(0xdffff7, 0.5);
+    g.fillCircle(o.x, o.y, 3);
+
+    // 命中判定：主角与灯源连线的夹角落在锥内即被照到
+    const dx = this.jelly.x - o.x;
+    const dy = this.jelly.y - o.y;
+    const dist = Math.hypot(dx, dy);
+    const delta = Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - a));
+    const hit = dist < len && delta < half;
+
+    if (this.scanHl) {
+      this.scanHl.setPosition(this.jelly.x, this.jelly.y);
+      this.scanHl.setAlpha(Phaser.Math.Linear(this.scanHl.alpha, hit ? 1 : 0, 0.2));
+    }
+    if (hit && !this.scanHit) {
+      this.scanHit = true;
+      audio.pulse();
+      this.particles.pulse(this.jelly.x, this.jelly.y, 120);
+    }
   }
 
   private toWelcome(): void {
+    if (this.phase === 'welcome' || this.phase === 'enter') return;
     this.phase = 'welcome';
     this.phaseTimer = 0;
+    this.scanCone?.destroy();
+    this.scanCone = undefined;
+    this.scanHl?.destroy();
+    this.scanHl = undefined;
     audio.pulse();
     this.particles.pulse(this.jelly.x, this.jelly.y, 180);
 
