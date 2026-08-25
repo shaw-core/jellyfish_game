@@ -165,7 +165,7 @@ export class PrologueScene extends Phaser.Scene {
           Math.random() * OPEN_W, 150 + Math.random() * 600, 'swarm_far',
         ).setDepth(3).setAlpha(0.4).setScrollFactor(0.45);
         s.play(['swarm_far_a', 'swarm_far_b', 'swarm_far_c'][i % 3]);
-        s.anims.setProgress(Math.random());
+        randomizePhase(s);
         this.farSwarm.push(s);
       }
     }
@@ -185,12 +185,12 @@ export class PrologueScene extends Phaser.Scene {
 
       if (hasSwarm) {
         s.play(variants[i % 3]);
-        s.anims.setProgress(Math.random());
+        randomizePhase(s);
       } else {
         s.setScale(0.45 + Math.random() * 0.35);
         if (this.status.jelly) {
           s.play('idle');
-          s.anims.setProgress(Math.random());
+          randomizePhase(s);
         }
       }
       this.swarm.push(s);
@@ -232,6 +232,7 @@ export class PrologueScene extends Phaser.Scene {
     }
 
     this.runPhase(dt);
+    this.watchdog();
 
     const cam = this.cameras.main;
     if (this.parallax.far) {
@@ -251,6 +252,45 @@ export class PrologueScene extends Phaser.Scene {
 
     this.particles.update(dt, this.cameras.main.worldView, this.time.now);
     audio.updateAmbient(dt);
+  }
+
+  /**
+   * 分段看门狗。
+   *
+   * 开场是线性的，任何一段卡住都等于游戏报废。这里给每段一个上限，
+   * 超时就强制推进 —— 宁可跳过一段演出，也不能让玩家永远停在那儿。
+   */
+  private watchdog(): void {
+    const cap: Partial<Record<Phase, [number, () => void]>> = {
+      sweep: [4, () => this.toArrive()],
+      arrive: [8, () => { this.phase = 'explore'; this.phaseTimer = 0; this.setHint('往深处游'); }],
+      approach: [6, () => this.toScan()],
+      scan: [8, () => this.toWelcome()],
+      welcome: [16, () => this.toEnter()],
+      enter: [12, () => this.toGame()],
+    };
+    const entry = cap[this.phase];
+    if (!entry) return;
+    if (this.phaseTimer > entry[0]) {
+      console.warn(`[prologue] 阶段 ${this.phase} 超时，强制推进`);
+      entry[1]();
+    }
+  }
+
+  /** 建场失败时的兜底地形：只画地面与门，保证流程能走完 */
+  private buildFallbackField(): void {
+    const w = this.ruinLevel.width * TILE;
+    const h = this.ruinLevel.height * TILE;
+    const g = this.add.graphics().setDepth(1);
+    g.fillGradientStyle(COLORS.deep, COLORS.deep, COLORS.abyss, COLORS.abyss, 1);
+    g.fillRect(0, 0, w, h);
+    g.fillStyle(COLORS.slate, 1);
+    for (let y = 0; y < this.ruinLevel.height; y++) {
+      for (let x = 0; x < this.ruinLevel.width; x++) {
+        if (this.ruinLevel.solid[y][x]) g.fillRect(x * TILE, y * TILE, TILE, TILE);
+      }
+    }
+    this.doorY = 14 * TILE - 64;
   }
 
   private readInput(): JellyfishInput {
@@ -303,8 +343,7 @@ export class PrologueScene extends Phaser.Scene {
       case 'sweep':
         this.jelly.velocity.x += 520 * dt;
         this.jelly.velocity.y += 180 * dt;
-        this.cameras.main.shake(80, 0.003);
-        if (this.phaseTimer > 2.0) this.toArrive();
+        if (this.phaseTimer < 1.2) this.cameras.main.shake(80, 0.003);
         break;
 
       case 'arrive':
@@ -362,15 +401,24 @@ export class PrologueScene extends Phaser.Scene {
     if (this.textures.exists('swarm_scatter')) {
       for (const sp of this.swarm) {
         sp.play('swarm_scatter');
-        sp.anims.setProgress(Math.random());
+        randomizePhase(sp);
       }
     }
 
-    this.time.delayedCall(1300, () => this.cameras.main.fadeOut(700, 11, 16, 38));
+    // 由淡出完成事件驱动切场，不要用定时器和 fadeOut 赛跑 ——
+    // fadeIn 撞上未结束的 fadeOut 会留下一块黑屏
+    this.time.delayedCall(1200, () => {
+      this.cameras.main.once(
+        Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
+        () => this.toArrive(),
+      );
+      this.cameras.main.fadeOut(700, 11, 16, 38);
+    });
   }
 
   /** 落进废墟：只换场景内容，不换 Scene，主角的物理状态保持连续 */
   private toArrive(): void {
+    if (this.phase !== 'sweep') return;   // 幂等：看门狗和淡出事件可能都触发
     this.phase = 'arrive';
     this.phaseTimer = 0;
 
@@ -386,7 +434,14 @@ export class PrologueScene extends Phaser.Scene {
     this.farSwarm = [];
     this.openBg.destroy();
 
-    this.buildRuinField();
+    try {
+      this.buildRuinField();
+    } catch (err) {
+      // 建场里任何一处异常都不该让玩家卡在空背景里。
+      // 至少保证地形还在，玩家能走到门口
+      console.error('[prologue] 废墟场构建失败，退化为最简地形', err);
+      this.buildFallbackField();
+    }
 
     this.cameras.main.setBounds(0, 0, this.ruinLevel.width * TILE, this.ruinLevel.height * TILE);
     this.jelly.setPosition(6 * TILE, 8 * TILE);
@@ -450,10 +505,15 @@ export class PrologueScene extends Phaser.Scene {
         const kind = Math.random();
         const g = this.add.sprite(gx * TILE + TILE / 2, gy * TILE, 'growth')
           .setOrigin(0.5, 1).setDepth(4);
-        if (kind < 0.45) g.play('growth_worms');
-        else if (kind < 0.75) g.play('growth_anemone');
-        else g.setFrame(12 + Math.floor(Math.random() * 3));
-        g.anims?.setProgress?.(Math.random());
+        if (kind < 0.45) {
+          g.play(`growth_worm_${1 + Math.floor(Math.random() * 3)}`);
+        } else if (kind < 0.75) {
+          g.play(`growth_anemone_${1 + Math.floor(Math.random() * 2)}`);
+        } else {
+          // 菌毯是静帧，没有动画 —— 所以下面的相位随机化必须能识别这种情况
+          g.setFrame(12 + Math.floor(Math.random() * 3));
+        }
+        randomizePhase(g);
       }
     }
 
@@ -509,7 +569,7 @@ export class PrologueScene extends Phaser.Scene {
 
         const s = this.add.sprite(px, py, sparkKey).setDepth(5);
         s.play(sparkKey === 'spark2' ? 'spark2_flicker' : 'spark_flicker');
-        s.anims.setProgress(Math.random());
+        randomizePhase(s);
       }
     }
 
@@ -666,6 +726,17 @@ export class PrologueScene extends Phaser.Scene {
     this.dialogue.destroy();
     this.scene.start('game', { status: this.status });
   }
+}
+
+/**
+ * 随机化动画相位，让同类精灵不同步呼吸。
+ *
+ * 必须先确认真的有动画在播 —— Phaser 的 setProgress 内部直接取
+ * currentAnim.getFrameByProgress，没有 currentAnim 时抛 TypeError。
+ * 这一下会把调用它的整个 create/build 流程打断，表现是场景"什么都没建出来"。
+ */
+function randomizePhase(sprite: Phaser.GameObjects.Sprite): void {
+  if (sprite.anims?.currentAnim) sprite.anims.setProgress(Math.random());
 }
 
 /** 一片没有任何实心格的开阔水域 */

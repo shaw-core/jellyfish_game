@@ -55,9 +55,14 @@ export const OPENING_TAGS: Record<string, { key: string; from: number; to: numbe
   undercurrent2: [{ key: 'undercurrent2', from: 0, to: 7, fps: 11, loop: true }],
   robot2: [{ key: 'robot2_idle', from: 0, to: 5, fps: 2.6, loop: true }],
   spark2: [{ key: 'spark2_flicker', from: 0, to: 7, fps: 9, loop: true }],
+  // 管虫是 3 个变体各 2 帧（不是一条 3 帧的动画），海葵 2 个变体各 3 帧，
+  // 菌毯 12-14 是 3 张静帧。按交付 JSON 的 Tag 区间拆开，别跨变体连播
   growth: [
-    { key: 'growth_worms', from: 0, to: 2, fps: 3, loop: true },
-    { key: 'growth_anemone', from: 6, to: 8, fps: 2.4, loop: true },
+    { key: 'growth_worm_1', from: 0, to: 1, fps: 3, loop: true },
+    { key: 'growth_worm_2', from: 2, to: 3, fps: 3, loop: true },
+    { key: 'growth_worm_3', from: 4, to: 5, fps: 3, loop: true },
+    { key: 'growth_anemone_1', from: 6, to: 8, fps: 2.4, loop: true },
+    { key: 'growth_anemone_2', from: 9, to: 11, fps: 2.4, loop: true },
   ],
   door2: [
     { key: 'door2_detect', from: 1, to: 2, fps: 3, loop: true },

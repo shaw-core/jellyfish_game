@@ -22,6 +22,15 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, HelpScene, PrologueScene, GameScene, HudScene, EndingScene],
 });
 
+// 场景里的异常会静默中断 create/update，表现成"画面什么都没有"。
+// 打到控制台，下次排查不用靠猜
+window.addEventListener('error', (e) => {
+  console.error('[uncaught]', e.error ?? e.message);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[unhandled promise]', e.reason);
+});
+
 // 右键用于生物脉冲，屏蔽浏览器菜单
 document.getElementById('game')?.addEventListener('contextmenu', (e) => e.preventDefault());
 
