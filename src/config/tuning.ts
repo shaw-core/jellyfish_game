@@ -28,7 +28,7 @@ export interface Tuning {
 
   glideThreshold: number;
 
-  /** 碰撞半径 */
+  /** 碰撞半径。第三批的主角实测伞盖宽 45px（帧 64×64），取 14 略小于半宽 */
   bodyRadius: number;
   /** 撞墙后保留的速度比例 */
   wallBounce: number;
@@ -80,7 +80,7 @@ export const DEFAULT_TUNING: Tuning = {
 
   glideThreshold: 42,
 
-  bodyRadius: 11,
+  bodyRadius: 14,
   wallBounce: 0.28,
 
   lightRadius: 108,

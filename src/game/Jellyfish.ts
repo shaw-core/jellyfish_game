@@ -39,10 +39,15 @@ export class Jellyfish {
   bumpStrength = 0;
 
   private stateTimer = 0;
-  private currentAnim = '';
+  currentAnim = '';
 
-  constructor(scene: Phaser.Scene, x: number, y: number, private hasAnims: boolean) {
-    this.sprite = scene.add.sprite(x, y, hasAnims ? 'jelly' : 'jelly-placeholder');
+  /** 是否拿到了第三批的运动全集 —— 有的话就彻底关掉程序变形 */
+  private readonly hasLocomotion: boolean;
+
+  constructor(private scene: Phaser.Scene, x: number, y: number, private hasAnims: boolean) {
+    this.hasLocomotion = scene.textures.exists('jelly2');
+    const key = this.hasLocomotion ? 'jelly2' : (hasAnims ? 'jelly' : 'jelly-placeholder');
+    this.sprite = scene.add.sprite(x, y, key);
     this.sprite.setOrigin(0.5, 0.5);
     this.sprite.setDepth(20);
   }
@@ -189,13 +194,17 @@ export class Jellyfish {
     if (this.state === 'glide' && this.speed <= t.glideThreshold) this.setState('idle');
     else if (this.state === 'idle' && this.speed > t.glideThreshold) this.setState('glide');
 
+    if (this.hasLocomotion) {
+      this.renderLocomotion();
+      return;
+    }
+
     if (!this.hasAnims) {
       this.sprite.rotation = this.facing + Math.PI / 2;
       return;
     }
 
     if (flags.useRawMotionFrames) {
-      // 原始帧：thrust / glide 是朝右画的，其余朝上
       const horizontal = this.state === 'thrust' || this.state === 'glide' || this.state === 'recover';
       this.playAnim(this.state);
       this.sprite.setScale(1, 1);
@@ -203,22 +212,63 @@ export class Jellyfish {
       return;
     }
 
-    // 程序化表现：底图始终用体积稳定的 idle / pulse
+    // 退化路径：R3 的 charge/thrust/glide 帧体积波动超 30%，只能拿 idle 做程序变形
     this.playAnim(this.pulsing ? 'pulse' : 'idle');
     this.sprite.rotation = this.facing + Math.PI / 2;
 
     let sx = 1;
     let sy = 1;
     if (this.state === 'charge') {
-      // 伞盖收拢：纵向压扁、横向补偿，保持视觉体积不变
       const k = Phaser.Math.Linear(1, 0.64, this.charge);
       sy = k; sx = 1 / k;
     } else if (this.state === 'thrust' || this.state === 'glide') {
-      // 前进方向拉长，幅度跟速度走
       const k = 1 + 0.34 * Phaser.Math.Clamp(this.speed / t.maxSpeed, 0, 1);
       sy = k; sx = 1 / k;
     }
     this.sprite.setScale(sx, sy);
+    this.sprite.setAlpha(this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0 ? 0.35 : 1);
+  }
+
+  /**
+   * 用第三批的真动画渲染。
+   *
+   * 关键点：charge 是一条单调的形变曲线（宽 45→61、高 52→30），
+   * 所以不能让它自己按帧率播 —— 要把播放进度**锁在蓄力量上**。
+   * 玩家松手前停在哪一帧，取决于蓄了多少，这样蓄力反馈才是连续的。
+   *
+   * 全部帧按朝上绘制，锚点在帧内 (32, 4)，42 帧完全一致，
+   * 所以只需要整体旋转，不需要任何缩放补偿。
+   */
+  private renderLocomotion(): void {
+    this.sprite.setScale(1, 1);
+    this.sprite.rotation = this.facing + Math.PI / 2;
+
+    if (this.pulsing) {
+      this.playAnim('j2_pulse');
+    } else if (this.state === 'charge') {
+      // 手动定帧，不走播放器
+      if (this.currentAnim !== 'j2_charge') {
+        this.currentAnim = 'j2_charge';
+        this.sprite.anims.play('j2_charge', true);
+      }
+      this.sprite.anims.pause();
+      const anim = this.sprite.anims.currentAnim;
+      if (anim) {
+        const idx = Math.min(
+          anim.frames.length - 1,
+          Math.floor(this.charge * anim.frames.length),
+        );
+        this.sprite.anims.setCurrentFrame(anim.frames[idx]);
+      }
+    } else {
+      const map: Record<SwimState, string> = {
+        idle: 'j2_idle', charge: 'j2_charge', thrust: 'j2_thrust',
+        recover: 'j2_recover', glide: 'j2_glide',
+      };
+      if (this.currentAnim === 'j2_charge') this.sprite.anims.resume();
+      this.playAnim(map[this.state]);
+    }
+
     this.sprite.setAlpha(this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0 ? 0.35 : 1);
   }
 
@@ -238,7 +288,32 @@ export class Jellyfish {
     if (this.invuln > 0) return false;
     this.health -= 1;
     this.invuln = t.invulnTime;
+    // 受伤有专门的帧，不再只靠 alpha 闪烁
+    if (this.scene.textures.exists('jelly_dmg')) {
+      this.overlayOneShot('jelly_dmg', 'j2_hurt');
+    }
     return true;
+  }
+
+  /** 重生：从暗到亮重新点亮 */
+  playRespawn(): void {
+    if (this.scene.textures.exists('jelly_dmg')) this.overlayOneShot('jelly_dmg', 'j2_respawn');
+  }
+
+  /**
+   * 在主角上层叠一个一次性动画。
+   * 不直接换主体贴图 —— 那样会打断运动状态机，回来时姿态会跳。
+   */
+  private overlayOneShot(texture: string, key: string): void {
+    const fx = this.scene.add.sprite(this.sprite.x, this.sprite.y, texture)
+      .setDepth(this.sprite.depth + 1);
+    fx.setRotation(this.sprite.rotation);
+    fx.play(key);
+    fx.once('animationcomplete', () => fx.destroy());
+    this.scene.tweens.add({
+      targets: fx, alpha: 0, delay: 260, duration: 240,
+      onUpdate: () => fx.setPosition(this.sprite.x, this.sprite.y),
+    });
   }
 }
 

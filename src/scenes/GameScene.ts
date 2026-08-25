@@ -343,6 +343,7 @@ export class GameScene extends Phaser.Scene {
     this.jelly.setPosition(this.checkpoint.x, this.checkpoint.y);
     this.jelly.health = 3;
     this.jelly.invuln = this.tuning.invulnTime;
+    this.jelly.playRespawn();
     this.events.emit('health', 3);
     this.cameras.main.flash(220, 11, 16, 38);
   }

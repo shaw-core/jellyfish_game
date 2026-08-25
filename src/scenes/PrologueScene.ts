@@ -58,6 +58,8 @@ export class PrologueScene extends Phaser.Scene {
   private stall = '';
   private diag?: Phaser.GameObjects.Text;
   private scanCone?: Phaser.GameObjects.Graphics;
+  private coneImg?: Phaser.GameObjects.Image;
+  private lamp?: Phaser.GameObjects.Sprite;
   private scanOrigin = { x: 0, y: 0 };
   private scanAngle = { v: 0 };
   private scanHit = false;
@@ -93,6 +95,8 @@ export class PrologueScene extends Phaser.Scene {
     this.doorY = 10 * TILE;
     this.arrived = false;
     this.scanCone = undefined;
+    this.coneImg = undefined;
+    this.lamp = undefined;
     this.scanHit = false;
     this.stall = '';
     this.tuning = { ...DEFAULT_TUNING };
@@ -519,20 +523,33 @@ export class PrologueScene extends Phaser.Scene {
 
     // 附着生物：这片海之前是死的，除了主角什么活物都没有。
     // 加上之后「死去的机械」和「活着的海」才形成对冲
-    if (this.textures.exists('growth')) {
+    // 海床地面装饰：打散岩层图块的重复节奏
+    if (this.textures.exists('floor_decals')) {
+      for (let gx = 2; gx < this.ruinLevel.width - 2; gx++) {
+        const gy = floor[gx];
+        if (gy <= 0 || Math.random() > 0.35) continue;
+        this.add.sprite(gx * TILE + TILE / 2, gy * TILE, 'floor_decals',
+          Math.floor(Math.random() * 12)).setOrigin(0.5, 1).setDepth(3).setAlpha(0.9);
+      }
+    }
+
+    if (this.textures.exists('growth2') || this.textures.exists('growth')) {
       for (let gx = 4; gx < this.ruinLevel.width - 4; gx += 2) {
         const gy = floor[gx];
         if (gy <= 0 || Math.random() > 0.4) continue;
+        const v2 = this.textures.exists('growth2');
         const kind = Math.random();
-        const g = this.add.sprite(gx * TILE + TILE / 2, gy * TILE, 'growth')
+        const g = this.add.sprite(gx * TILE + TILE / 2, gy * TILE, v2 ? 'growth2' : 'growth')
           .setOrigin(0.5, 1).setDepth(4);
         if (kind < 0.45) {
-          g.play(`growth_worm_${1 + Math.floor(Math.random() * 3)}`);
+          const i = 1 + Math.floor(Math.random() * 3);
+          g.play(v2 ? `g2_worm_${i}` : `growth_worm_${i}`);
         } else if (kind < 0.75) {
-          g.play(`growth_anemone_${1 + Math.floor(Math.random() * 2)}`);
+          const i = 1 + Math.floor(Math.random() * 2);
+          g.play(v2 ? `g2_anemone_${i}` : `growth_anemone_${i}`);
         } else {
-          // 菌毯是静帧，没有动画 —— 所以下面的相位随机化必须能识别这种情况
-          g.setFrame(12 + Math.floor(Math.random() * 3));
+          // 菌毯是静帧，没有动画 —— 相位随机化必须能识别这种情况
+          g.setFrame(v2 ? 22 + Math.floor(Math.random() * 3) : 12 + Math.floor(Math.random() * 3));
         }
         randomizePhase(g);
       }
@@ -620,7 +637,8 @@ export class PrologueScene extends Phaser.Scene {
    * 桁架那族是镂空的，画面因此有了可透视的层次。
    */
   private paintWrecks(): void {
-    if (!this.textures.exists('wreck')) return;
+    const key = this.textures.exists('wreck2') ? 'wreck2' : 'wreck';
+    if (!this.textures.exists(key)) return;
 
     const families: WreckFamily[] = [
       'tilted_hull', 'open_truss', 'overturned_tank', 'sunken_platform',
@@ -633,7 +651,7 @@ export class PrologueScene extends Phaser.Scene {
     const rt = this.add.renderTexture(
       0, 0, this.ruinLevel.width * TILE, this.ruinLevel.height * TILE,
     ).setOrigin(0, 0).setDepth(2);
-    const stamp = this.add.image(0, 0, 'wreck').setVisible(false).setOrigin(0, 0);
+    const stamp = this.add.image(0, 0, key).setVisible(false).setOrigin(0, 0);
 
     for (let y = 0; y < this.ruinLevel.height; y++) {
       for (let x = 0; x < this.ruinLevel.width; x++) {
@@ -679,11 +697,26 @@ export class PrologueScene extends Phaser.Scene {
     else this.door?.play('door_scan');
     audio.relayOn();
 
-    // 探照灯从门上的读取槽射出，绕着灯源摆动，扫过整片水域。
-    // 之前是一条平移的横带，主角只要不在那条线上就完全不会被扫到 ——
-    // 锥形从灯源发散，摆过去一定覆盖得到。
-    this.scanCone = this.add.graphics().setDepth(28).setBlendMode(Phaser.BlendModes.ADD);
+    // 探照灯从门顶灯具射出，绕灯源摆动扫过整片水域。
+    // 之前是一条平移的横带，主角只要不在那条线上就完全扫不到。
     this.scanOrigin = { x: this.doorX + 40, y: this.doorY - 44 };
+
+    if (this.textures.exists('scan_lamp')) {
+      this.lamp = this.add.sprite(this.scanOrigin.x, this.scanOrigin.y - 10, 'scan_lamp')
+        .setDepth(29);
+      this.lamp.play('lamp_scan');
+    }
+
+    if (this.textures.exists('cone_beam')) {
+      // 贴图左端窄右端宽，锚在左端 = 灯源，按角度旋转、按长度拉伸
+      this.coneImg = this.add.image(this.scanOrigin.x, this.scanOrigin.y, 'cone_beam')
+        .setOrigin(0, 0.5).setDepth(28)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.75);
+      this.coneImg.setDisplaySize(620, 200);
+    } else {
+      this.scanCone = this.add.graphics().setDepth(28).setBlendMode(Phaser.BlendModes.ADD);
+    }
     this.scanAngle = { v: Math.PI * 0.78 };
 
     this.tweens.add({
@@ -695,39 +728,41 @@ export class PrologueScene extends Phaser.Scene {
       onComplete: () => this.toWelcome(),
     });
 
-    if (this.textures.exists('scan_hl')) {
-      this.scanHl = this.add.sprite(this.jelly.x, this.jelly.y, 'scan_hl')
+    const hlKey = this.textures.exists('scan_hl2') ? 'scan_hl2' : 'scan_hl';
+    if (this.textures.exists(hlKey)) {
+      this.scanHl = this.add.sprite(this.jelly.x, this.jelly.y, hlKey)
         .setDepth(21).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
-      this.scanHl.play('scan_hl');
+      this.scanHl.play(hlKey === 'scan_hl2' ? 'scan_hl2' : 'scan_hl');
     }
   }
 
   /** 每帧重画探照灯，并判断主角是否被照到 */
   private drawScanCone(): void {
-    const g = this.scanCone;
-    if (!g) return;
-    g.clear();
-
     const o = this.scanOrigin;
     const a = this.scanAngle.v;
-    const half = 0.16;
-    const len = 620;
 
-    // 三层由内到外递减，做出体积感；用低 alpha 叠加而不是实心色
-    for (const [spread, alpha] of [[half * 0.45, 0.16], [half * 0.75, 0.09], [half, 0.05]]) {
-      g.fillStyle(0x70ffe0, alpha);
-      g.beginPath();
-      g.moveTo(o.x, o.y);
-      for (let t = -1; t <= 1.001; t += 0.125) {
-        g.lineTo(o.x + Math.cos(a + spread * t) * len, o.y + Math.sin(a + spread * t) * len);
-      }
-      g.closePath();
-      g.fillPath();
+    if (this.coneImg) {
+      this.coneImg.setRotation(a);
     }
 
-    // 灯源本身
-    g.fillStyle(0xdffff7, 0.5);
-    g.fillCircle(o.x, o.y, 3);
+    const g = this.scanCone;
+    if (g) {
+      g.clear();
+      const halfG = 0.16;
+      for (const [spread, alpha] of [[halfG * 0.45, 0.16], [halfG * 0.75, 0.09], [halfG, 0.05]]) {
+        g.fillStyle(0x70ffe0, alpha);
+        g.beginPath();
+        g.moveTo(o.x, o.y);
+        for (let t = -1; t <= 1.001; t += 0.125) {
+          g.lineTo(o.x + Math.cos(a + spread * t) * 620, o.y + Math.sin(a + spread * t) * 620);
+        }
+        g.closePath();
+        g.fillPath();
+      }
+    }
+
+    const half = 0.16;
+    const len = 620;
 
     // 命中判定：主角与灯源连线的夹角落在锥内即被照到
     const dx = this.jelly.x - o.x;
@@ -742,6 +777,7 @@ export class PrologueScene extends Phaser.Scene {
     }
     if (hit && !this.scanHit) {
       this.scanHit = true;
+      this.lamp?.play('lamp_lock');
       audio.pulse();
       this.particles.pulse(this.jelly.x, this.jelly.y, 120);
     }
@@ -753,6 +789,10 @@ export class PrologueScene extends Phaser.Scene {
     this.phaseTimer = 0;
     this.scanCone?.destroy();
     this.scanCone = undefined;
+    this.coneImg?.destroy();
+    this.coneImg = undefined;
+    this.lamp?.destroy();
+    this.lamp = undefined;
     this.scanHl?.destroy();
     this.scanHl = undefined;
     audio.pulse();
