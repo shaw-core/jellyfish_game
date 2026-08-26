@@ -131,7 +131,7 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('help', { status: this.status });
       return;
     }
-    this.scene.start(this.index === 0 ? 'prologue' : 'game', { status: this.status });
+    this.scene.start(this.index === 0 ? 'prologue' : 'zone1tut', { status: this.status });
   }
 
   override update(_t: number, delta: number): void {

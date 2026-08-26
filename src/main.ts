@@ -3,6 +3,7 @@ import { BootScene } from './scenes/BootScene';
 import { TitleScene, HelpScene } from './scenes/TitleScene';
 import { PrologueScene } from './scenes/PrologueScene';
 import { GameScene } from './scenes/GameScene';
+import { Zone1TutorialScene } from './scenes/Zone1TutorialScene';
 import { HudScene } from './scenes/HudScene';
 import { EndingScene } from './scenes/EndingScene';
 import { mountDebugPanel } from './ui/DebugPanel';
@@ -19,7 +20,8 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, TitleScene, HelpScene, PrologueScene, GameScene, HudScene, EndingScene],
+  scene: [BootScene, TitleScene, HelpScene, PrologueScene,
+    Zone1TutorialScene, GameScene, HudScene, EndingScene],
 });
 
 // 场景里的异常会静默中断 create/update，表现成"画面什么都没有"。

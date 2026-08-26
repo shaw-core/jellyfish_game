@@ -9,6 +9,7 @@ import { FONT, SIZE } from '../ui/theme';
 import type { AssetStatus } from './BootScene';
 import { TILE, parseLevel, type LevelData } from '../level/level1';
 import { PROLOGUE_RAW } from '../level/prologue';
+import { guardCreate } from '../ui/fatal';
 
 type Phase =
   | 'swim'      // 跟着族群游
@@ -103,6 +104,10 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   create(): void {
+    guardCreate(this, () => this.build());
+  }
+
+  private build(): void {
     this.cameras.main.setBackgroundColor(COLORS.abyss);
 
     this.openLevel = emptyLevel(OPEN_W, OPEN_H);
@@ -837,7 +842,8 @@ export class PrologueScene extends Phaser.Scene {
 
   private toGame(): void {
     this.dialogue.destroy();
-    this.scene.start('game', { status: this.status });
+    // 开场之后是 Zone 1 教学段（前四拍），不再直接丢进完整关卡
+    this.scene.start('zone1tut', { status: this.status });
   }
 }
 

@@ -211,6 +211,20 @@ export class BootScene extends Phaser.Scene {
     sheet(this, 'cable2', 'ceiling_cable_tiles', 32, 32);
     this.load.image('pump_machine', 'assets/zone1_pump_machine.png');
 
+    // 第五批：Zone 1 场景资产
+    sheet(this, 'zone1_lining', 'zone1_lining_tileset', 16, 16);
+    sheet(this, 'zone1_backdrop', 'zone1_backdrop_tileset', 16, 16);
+    sheet(this, 'zone1_pipework', 'zone1_pipework_tileset', 16, 16);
+    sheet(this, 'zone1_pump', 'zone1_pump_unit', 96, 128);
+    sheet(this, 'zone1_panel', 'zone1_control_panel', 48, 64);
+    sheet(this, 'zone1_grate', 'zone1_grate_window', 32, 64);
+    sheet(this, 'zone1_signage', 'zone1_signage_sheet', 16, 16);
+    sheet(this, 'zone1_waterline', 'zone1_waterline_decals', 32, 32);
+    sheet(this, 'zone1_sealed', 'zone1_sealed_props', 32, 32);
+    sheet(this, 'zone1_lights', 'zone1_lights_sheet', 16, 16);
+    sheet(this, 'zone1_edge', 'zone1_edge_hint', 16, 16);
+    sheet(this, 'zone1_intrusion', 'zone1_intrusion_decals', 32, 32);
+
     this.load.json('manifest', 'assets/engine_manifest.json');
     this.load.image('cut1', 'assets/cutscene_01_separation.png');
     this.load.image('cut2', 'assets/cutscene_02_reunion.png');

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/tuning';
 import { FONT, SIZE } from '../ui/theme';
+import { bindCrossScene } from '../ui/fatal';
 
 
 /** 覆盖在游戏之上的 HUD。独立场景，这样不受主相机 zoom 影响 */
@@ -41,9 +42,10 @@ export class HudScene extends Phaser.Scene {
       this.setObjective(initial.relays, initial.totalRelays);
     }
 
-    game.events.on('health', (h: number) => this.setHealth(h));
-    game.events.on('objective', (lit: number, total: number) => this.setObjective(lit, total));
-    game.events.on('toast', (msg: string) => this.showToast(msg));
+    bindCrossScene(this, game.events, 'health', (h: never) => this.setHealth(h as number));
+    bindCrossScene(this, game.events, 'objective',
+      (...a: never[]) => this.setObjective(a[0] as number, a[1] as number));
+    bindCrossScene(this, game.events, 'toast', (m: never) => this.showToast(m as string));
 
     this.scale.on('resize', () => this.reposition());
     this.reposition();

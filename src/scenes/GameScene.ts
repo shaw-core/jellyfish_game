@@ -10,6 +10,7 @@ import { Particles } from '../game/Particles';
 import { CameraJuice } from '../game/CameraJuice';
 import type { AssetStatus } from './BootScene';
 import { audio } from '../audio/AudioSystem';
+import { guardCreate } from '../ui/fatal';
 
 interface Manifest {
   blob47: BlobTables;
@@ -70,6 +71,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    guardCreate(this, () => this.build());
+  }
+
+  private build(): void {
     this.level = parseLevel(LEVEL1_RAW);
     const worldW = this.level.width * TILE;
     const worldH = this.level.height * TILE;
